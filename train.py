@@ -7,7 +7,7 @@ from data import MRKneeDataModule
 
 # TODO:
 
-# implement argparser? Behøver vel egentlig kun argparser til predict??
+# implement argparser? Behøver vel egentlig kun argparser til predict?? pl har argparser helper
 # Tune hyperparams
 # error analysis - find top losses - visualise!
 

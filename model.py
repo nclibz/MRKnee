@@ -10,6 +10,7 @@ from torchvision import models
 # TODO:
 # Efficientnet
 #  køre forward på alle 3 planes samtidig?
+# Hvordan med optimizer??
 #   kan vel egentlig outputte dem direkte i linear ? Backpropper den så til alle?
 #       kan jeg backproppe fra unified loss til alle 3 models??
 #       lave individuel checkpoint for hvert plane
@@ -20,17 +21,27 @@ from torchvision import models
 class MRKnee(pl.LightningModule):
     def __init__(self):
         super().__init__()
-        self.model = models.alexnet(pretrained=True)
-        self.gap = nn.AdaptiveAvgPool2d(1)
-        self.classifier = nn.Linear(256, 1)
+        self.model_ax = models.alexnet(pretrained=True)
+        self.model_sag = models.alexnet(pretrained=True)
+        self.model_cor = models.alexnet(pretrained=True)
+        self.gap_ax = nn.AdaptiveAvgPool2d(1)
+        self.gap_sag = nn.AdaptiveAvgPool2d(1)
+        self.gap_cor = nn.AdaptiveAvgPool2d(1)
+        self.clf = nn.Linear(256, 1)
 
-    def forward(self, x):
+    def run_model(self, model, series):
         x = torch.squeeze(x, dim=0)  # only batch size 1 supported
         x = self.model.features(x)
         x = self.gap(x).view(x.size(0), -1)
         x = torch.max(x, 0, keepdim=True)[0]
-        x = self.classifier(x)
         return x
+
+    def forward(self, axial, sagital, coronal):
+        ax = self.run_model(self.model_ax, axial)
+        sag = self.run_model(self.model_sag, sagital)
+        cor = self.run_model(self.model_cor, coronal)
+        cat = torch.cat((ax, sag, cor), 1)
+        return self.clf(cat)
 
     def training_step(self, batch, batchidx):
         img, label, sample_path, weight = batch
@@ -43,7 +54,7 @@ class MRKnee(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=0.001, weight_decay=.01)
+        return torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=.01)
 
     def on_epoch_start(self):
         self.epoch_pred = []

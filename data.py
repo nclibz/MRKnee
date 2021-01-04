@@ -11,8 +11,10 @@ torch.manual_seed(17)
 
 
 # TODO:
+# getitem skal outputte alle 3 planes
 # lave visualiser for at se hvad dl spytter ud
 # lave en yaml til conda
+# lave transforms
 
 
 # %%
