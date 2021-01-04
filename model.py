@@ -30,7 +30,7 @@ class MRKnee(pl.LightningModule):
         self.clf = nn.Linear(256, 1)
 
     def run_model(self, model, series):
-        x = torch.squeeze(x, dim=0)  # only batch size 1 supported
+        x = torch.squeeze(series, dim=0)  # only batch size 1 supported
         x = self.model.features(x)
         x = self.gap(x).view(x.size(0), -1)
         x = torch.max(x, 0, keepdim=True)[0]
