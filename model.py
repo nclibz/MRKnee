@@ -43,7 +43,7 @@ class MRKnee(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=0.001, weight_decay=.01)
+        return torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=.01)
 
     def on_epoch_start(self):
         self.epoch_pred = []
@@ -52,8 +52,3 @@ class MRKnee(pl.LightningModule):
     def on_epoch_end(self):
         self.log('auc', auroc(torch.Tensor(
             self.epoch_pred), torch.Tensor(self.epoch_lbl), pos_label=1), prog_bar=True)
-
-        img, label, sample_path, weight = batch
-        logit = self(img)
-        loss = F.binary_cross_entropy_with_logits(
-            logit, label, pos_weight=weight)

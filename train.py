@@ -20,5 +20,7 @@ model = MRKnee()
 # %%
 tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
-trainer = pl.Trainer(gpus=1, max_epochs=1, logger=tb_logger)
+trainer = pl.Trainer(gpus=1, logger=tb_logger, overfit_batches=10)
 trainer.fit(model, dm)
+
+# %%
