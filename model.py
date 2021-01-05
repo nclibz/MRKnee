@@ -10,6 +10,7 @@ from efficientnet_pytorch import EfficientNet
 
 # TODO:
 # implementer Efficientnet
+# løber tør for GPU mem
 # Hvordan med optimizer??
 #   kan vel egentlig outputte dem direkte i linear ? Backpropper den så til alle?
 #       kan jeg backproppe fra unified loss til alle 3 models??

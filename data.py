@@ -13,18 +13,15 @@ torch.manual_seed(17)
 # lave visualiser for at se hvad dl spytter ud
 # lave en yaml til conda
 # lave transforms
-# Skal lige undersøge normaliseringen??
-# imagenet: normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-# std=[0.229, 0.224, 0.225])
-
-
-ax, cor, bla = [plane for plane in ["axial", "coronal", "bla"]]
+#    Skal lige undersøge normaliseringen??
+#   imagenet: normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+#   std=[0.229, 0.224, 0.225])
 
 # %%
 
 
 class MRDS(Dataset):
-    def __init__(self, stage, diagnosis, transform=None):
+    def __init__(self, datadir,  stage, diagnosis, transform=None):
         super().__init__()
         self.transform = transform
         self.stage = stage
@@ -91,7 +88,9 @@ class MRKneeDataModule(pl.LightningDataModule):
     # create datasets
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=1, shuffle=True)
+        return DataLoader(self.train_ds, batch_size=1, shuffle=True, num_workers=8)
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False)
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=8)
+
+# %%
