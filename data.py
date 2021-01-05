@@ -25,9 +25,10 @@ class MRDS(Dataset):
         super().__init__()
         self.transform = transform
         self.stage = stage
+        self.datadir = datadir
 
         # label_dict
-        with open(f'data/{stage}-{diagnosis}.csv', "r") as f:
+        with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
             self.label_dict = {row[0]: int(row[1])
                                for row in list(csv.reader(f))}
 
@@ -41,7 +42,7 @@ class MRDS(Dataset):
 
     def prep_series(self, plane, index):
         id = self.ids[index]
-        path = f'data/{self.stage}/{plane}/{id}.npy'
+        path = f'{self.datadir}/{self.stage}/{plane}/{id}.npy'
         series = torch.from_numpy(np.load(path)).to(dtype=torch.float32)
 
         # transforms
@@ -73,8 +74,9 @@ class MRDS(Dataset):
 # %%
 class MRKneeDataModule(pl.LightningDataModule):
 
-    def __init__(self, diagnosis):
+    def __init__(self, datadir, diagnosis):
         super().__init__()
+        self.datadir = datadir
         self.diagnosis = diagnosis
         self.train_transforms = transforms.Compose([
             transforms.CenterCrop(224)
@@ -82,15 +84,19 @@ class MRKneeDataModule(pl.LightningDataModule):
         self.val_transforms = transforms.Compose([
             transforms.CenterCrop(224)
         ])
-        self.train_ds = MRDS('train', self.diagnosis,  self.train_transforms)
-        self.val_ds = MRDS('valid', self.diagnosis, self.val_transforms)
+        self.train_ds = MRDS(datadir, 'train', self.diagnosis,  self.train_transforms)
+        self.val_ds = MRDS(datadir, 'valid', self.diagnosis, self.val_transforms)
 
     # create datasets
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=1, shuffle=True, num_workers=8)
+        return DataLoader(self.train_ds, batch_size=1, shuffle=True, num_workers=2)
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=8)
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=2)
 
+# %%
+# TESTING
+#md = MRKneeDataModule('data', 'acl')
+# md.train_ds[1]
 # %%
