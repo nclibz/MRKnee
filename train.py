@@ -13,15 +13,14 @@ from argparse import ArgumentParser
 
 # TODO:
 
-# lave  argparser? behøver jeg vel egentlig kun til submissions??
+# lave  argparser?
 # Tune hyperparams
 # error analysis - find top losses - visualise!
 
 
 # %%
-
 if __name__ == '__main__':
-    dm = MRKneeDataModule(diagnosis="meniscus")
+    dm = MRKneeDataModule(datadir='data', diagnosis="meniscus")
 
     tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
@@ -31,5 +30,6 @@ if __name__ == '__main__':
     trainer = pl.Trainer(gpus=1, fast_dev_run=True,
                          logger=tb_logger, callbacks=[checkpoint])
     trainer.fit(model, dm)
+
 
 # %%

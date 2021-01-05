@@ -18,26 +18,37 @@ from efficientnet_pytorch import EfficientNet
 # hvordan virker 3d conv??
 # hvordan virker avg pool2d? og torch.max??
 
+# efficientnet
+#         # Convolution layers
+#         x = self.extract_features(inputs)
+#         # Pooling and final linear layer
+#         x = self._avg_pooling(x)
+#         if self._global_params.include_top:
+#             x = x.flatten(start_dim=1)
+#             x = self._dropout(x)
+#             x = self._fc(x)
+#         return x
+
+
+#        self._avg_pooling = nn.AdaptiveAvgPool2d(1)
+#        self._dropout = nn.Dropout(self._global_params.dropout_rate)
+#        self._fc = nn.Linear(out_channels, self._global_params.num_classes)
 # %%
 
 class MRKnee(pl.LightningModule):
     def __init__(self):
         super().__init__()
-        #self.example_input_array = [torch.rand(20, 3, 224, 224)*3]
+        self.example_input_array = torch.rand(20, 3, 224, 224)
         self.model_ax = EfficientNet.from_pretrained('efficientnet-b0')
         self.model_sag = EfficientNet.from_pretrained('efficientnet-b0')
         self.model_cor = EfficientNet.from_pretrained('efficientnet-b0')
-        self.clf = nn.Linear(256, 1)
+        self.clf = nn.Linear(1280*3, 1)
 
     def run_model(self, model, series):
         x = torch.squeeze(series, dim=0)  # only batch size 1 supported
-        print(x.shape)
         x = model.extract_features(x)
-        print(x.shape)
         x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)  # Hvad gør de?
-        print(x.shape)
         x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør de?
-        print(x.shape)
         return x
 
     def forward(self, x):
