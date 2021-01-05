@@ -9,16 +9,12 @@ from efficientnet_pytorch import EfficientNet
 
 
 # TODO:
-# implementer Efficientnet
-# løber tør for GPU mem
-# Hvordan med optimizer??
-#   kan vel egentlig outputte dem direkte i linear ? Backpropper den så til alle?
-#       kan jeg backproppe fra unified loss til alle 3 models??
+# validation set med val_auc
 # scheduler
 # hvorfor tager jeg torch.max??
 # forstå view efter pool ordentligt
 
-# efficientnet
+# efficientnet Head
 #         # Convolution layers
 #         x = self.extract_features(inputs)
 #         # Pooling and final linear layer
@@ -51,10 +47,10 @@ class MRKnee(pl.LightningModule):
         return x
 
     def forward(self, x):
-        axial, sagital, coronal = x
-        ax = self.run_model(self.model_ax, axial)
-        sag = self.run_model(self.model_sag, sagital)
-        cor = self.run_model(self.model_cor, coronal)
+        ax, sag, cor = x
+        ax = self.run_model(self.model_ax, ax)
+        sag = self.run_model(self.model_sag, sag)
+        cor = self.run_model(self.model_cor, cor)
         y = torch.cat((ax, sag, cor), 1)
         return self.clf(y)
 
