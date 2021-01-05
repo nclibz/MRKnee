@@ -15,8 +15,8 @@ from efficientnet_pytorch import EfficientNet
 #   kan vel egentlig outputte dem direkte i linear ? Backpropper den så til alle?
 #       kan jeg backproppe fra unified loss til alle 3 models??
 # scheduler
-# hvordan virker 3d conv??
-# hvordan virker avg pool2d? og torch.max??
+# hvorfor tager jeg torch.max??
+# forstå view efter pool ordentligt
 
 # efficientnet
 #         # Convolution layers
@@ -38,7 +38,6 @@ from efficientnet_pytorch import EfficientNet
 class MRKnee(pl.LightningModule):
     def __init__(self):
         super().__init__()
-        self.example_input_array = torch.rand(20, 3, 224, 224)
         self.model_ax = EfficientNet.from_pretrained('efficientnet-b0')
         self.model_sag = EfficientNet.from_pretrained('efficientnet-b0')
         self.model_cor = EfficientNet.from_pretrained('efficientnet-b0')
