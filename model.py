@@ -37,9 +37,6 @@ class MRKnee(pl.LightningModule):
                  learning_rate=0.001):
         super().__init__()
         self.learning_rate = learning_rate
-
-        train_batches = len(self.train_dataloader())
-        self.total_steps = (self.hparams.epochs * train_batches)
         # layers
         self.bn_ax = nn.BatchNorm2d(3)
         self.model_ax = timm.create_model(
@@ -51,6 +48,10 @@ class MRKnee(pl.LightningModule):
         self.model_cor = timm.create_model(
             model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
         self.clf = nn.Linear(1280*3, 1)
+
+    def setup(self):
+        train_batches = len(self.train_dataloader())
+        self.total_steps = (self.hparams.epochs * train_batches)
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
