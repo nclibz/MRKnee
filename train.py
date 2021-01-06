@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 
 # TODO:
 
-# lave  argparser?
+# lave  argparser? - behøver jeg næsten kun til submission?
 # Tune hyperparams
 # error analysis - find top losses - visualise!
 

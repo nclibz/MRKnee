@@ -12,7 +12,7 @@ torch.manual_seed(17)
 # lave visualiser for at se hvad dl spytter ud
 # lave transforms
 # forstå mean og normalisering på medical data?
-# mit mean bliver helt skævt
+# mit mean bliver meget lavt ved nedenstående kode
 
 
 # beregne mean og std for dataloader

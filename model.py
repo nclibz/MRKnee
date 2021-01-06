@@ -13,10 +13,11 @@ import timm
 # Implementere FixRes?
 # scheduler
 # hvorfor tager jeg torch.max??
-# forstå view efter pool ordentligt
-
+# Logge val_loss så jeg kan bruge overfit_batches??
+# der er vidst noget galt med val_auc eller med min model. Første epoch er værre en random??
 # for et par epochs freeze feature extraction.
 # Derefter køre med stigende lr fra tail to head.
+
 
 # def on_epoch_start(self):
 #     if self.current_epoch == 0:
@@ -27,20 +28,6 @@ import timm
 #         self.unfreeze() # Or partially unfreeze
 #         self.trainer.lr_schedulers = ... # Define new scheduler
 
-
-# efficientnet Head
-#         # Convolution layers
-#         x = self.extract_features(inputs)
-#         # Pooling and final linear layer
-#         x = self._avg_pooling(x)
-#         if self._global_params.include_top:
-#             x = x.flatten(start_dim=1)
-#             x = self._dropout(x)
-#             x = self._fc(x)
-#         return x
-#        self._avg_pooling = nn.AdaptiveAvgPool2d(1)
-#        self._dropout = nn.Dropout(self._global_params.dropout_rate)
-#        self._fc = nn.Linear(out_channels, self._global_params.num_classes)
 # %%
 
 class MRKnee(pl.LightningModule):
@@ -83,6 +70,7 @@ class MRKnee(pl.LightningModule):
 
         self.preds.append(torch.sigmoid(logit).item())
         self.lbl.append(label.item())
+        self.log('val_loss', loss, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
