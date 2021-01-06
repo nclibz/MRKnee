@@ -125,9 +125,9 @@ class MRKneeDataModule(pl.LightningDataModule):
 
 # %%
 # # TESTING
-# md = MRKneeDataModule('data', 'acl', transforms=False)
-# type(md.train_ds[1][0])
+md = MRKneeDataModule('data', 'meniscus', transf=False)
+type(md.train_ds[1][0])
 # %%
-
+len(md.train_ds)
 
 # %%

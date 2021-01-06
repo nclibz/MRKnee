@@ -5,7 +5,7 @@ from pytorch_lightning.metrics.functional.classification import auroc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from efficientnet_pytorch import EfficientNet
+from torch.optim.lr_scheduler import OneCycleLR
 import timm
 
 
@@ -33,9 +33,12 @@ nn.BatchNorm2d(3)
 
 
 class MRKnee(pl.LightningModule):
-    def __init__(self, model_name='efficientnet_b1', learning_rate=0.001):
+    def __init__(self, model_name='efficientnet_b1',
+                 learning_rate=0.001,
+                 total_steps=None):
         super().__init__()
         self.learning_rate = learning_rate
+        self.total_steps = total_steps
         # layers
         self.bn_ax = nn.BatchNorm2d(3)
         self.model_ax = timm.create_model(
@@ -84,7 +87,10 @@ class MRKnee(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=.01)
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=.01)
+        scheduler = OneCycleLR(optimizer, max_lr=self.learning_rate,
+                               total_steps=self.total_steps)
+        return [optimizer], [scheduler]
 
     def on_validation_epoch_start(self):
         self.preds = []
@@ -93,3 +99,5 @@ class MRKnee(pl.LightningModule):
     def on_validation_epoch_end(self):
         self.log('val_auc', auroc(torch.Tensor(
             self.preds), torch.Tensor(self.lbl), pos_label=1), prog_bar=True)
+
+# %%

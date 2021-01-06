@@ -27,7 +27,10 @@ if __name__ == '__main__':
     checkpoint = pl.callbacks.ModelCheckpoint(
         monitor="val_auc", save_top_k=2, mode="max")
 
-    model = MRKnee(model_name='efficientnet_b0')
+    EPOCHS = 10
+    STEPS = len(dm.train_ds)
+
+    model = MRKnee(model_name='efficientnet_b0', total_steps=EPOCHS*STEPS)
     trainer = pl.Trainer(gpus=1,
                          precision=16,
                          overfit_batches=1,
