@@ -39,19 +39,23 @@ class MRKnee(pl.LightningModule):
             model_name, pretrained=True, num_classes=0)
         self.model_cor = timm.create_model(
             model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
+        self.bn_ax = nn.BatchNorm2d()
+        self.bn_sag = nn.BatchNorm2d()
+        self.bn_cor = nn.BatchNorm2d()
         self.clf = nn.Linear(1280*3, 1)
 
-    def run_model(self, model, series):
+    def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
+        x = bn(x)
         x = model(x)
         x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør det?
         return x
 
     def forward(self, x):
         ax, sag, cor = x
-        ax = self.run_model(self.model_ax, ax)
-        sag = self.run_model(self.model_sag, sag)
-        cor = self.run_model(self.model_cor, cor)
+        ax = self.run_model(self.model_ax, self.bn_ax, ax)
+        sag = self.run_model(self.model_sag, self.bn_sag, sag)
+        cor = self.run_model(self.model_cor, self.bn_cor, cor)
         y = torch.cat((ax, sag, cor), 1)
         return self.clf(y)
 

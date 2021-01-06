@@ -105,11 +105,11 @@ class MRKneeDataModule(pl.LightningDataModule):
         if transf:
             self.train_transforms = transforms.Compose([
                 transforms.CenterCrop(224),
-                transforms.Normalize(mean=[MEAN], std=[STD])
+                # transforms.Normalize(mean=[MEAN], std=[STD]) afprøver bn layer som første input istedet
             ])
             self.val_transforms = transforms.Compose([
                 transforms.CenterCrop(224),
-                transforms.Normalize(mean=[MEAN], std=[STD])
+                # transforms.Normalize(mean=[MEAN], std=[STD])
             ])
         self.train_ds = MRDS(datadir, 'train', self.diagnosis,  self.train_transforms)
         self.val_ds = MRDS(datadir, 'valid', self.diagnosis, self.val_transforms)
