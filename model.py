@@ -60,6 +60,7 @@ class MRKnee(pl.LightningModule):
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(
             logit, label, pos_weight=weight)
+        self.log('train_loss', loss, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batchidx):
