@@ -20,15 +20,20 @@ from argparse import ArgumentParser
 
 # %%
 if __name__ == '__main__':
-    dm = MRKneeDataModule(datadir='data', diagnosis="meniscus")
+    dm = MRKneeDataModule(datadir='data', diagnosis="meniscus", num_workers=2)
 
     tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
     checkpoint = pl.callbacks.ModelCheckpoint(
         monitor="val_auc", save_top_k=2, mode="max")
-    model = MRKnee()
-    trainer = pl.Trainer(gpus=1, fast_dev_run=True,
-                         logger=tb_logger, callbacks=[checkpoint])
+
+    model = MRKnee(model_name='efficientnet_b0')
+    trainer = pl.Trainer(gpus=1,
+                         precision=16,
+                         overfit_batches=1,
+                         num_sanity_val_steps=0,
+                         logger=tb_logger,
+                         callbacks=[checkpoint])
     trainer.fit(model, dm)
 
 

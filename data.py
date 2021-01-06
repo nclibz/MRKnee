@@ -9,13 +9,32 @@ torch.manual_seed(17)
 
 
 # TODO:
-# getitem skal outputte alle 3 planes
 # lave visualiser for at se hvad dl spytter ud
-# lave en yaml til conda
 # lave transforms
-#    Skal lige undersøge normaliseringen??
-#   imagenet: normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-#   std=[0.229, 0.224, 0.225])
+# forstå mean og normalisering på medical data?
+# mit mean bliver helt skævt
+
+
+# beregne mean og std for dataloader
+# mean = 0
+# meansq = 0
+# count = 0
+
+# for index, data in enumerate(md.train_dataloader()):
+#     data = data[0][0]
+#     mean = data.sum()
+#     meansq = meansq + (data**2).sum()
+#     count += np.prod(data.shape)
+
+# total_mean = mean/count
+# total_var = (meansq/count) - (total_mean**2)
+# total_std = torch.sqrt(total_var)
+# print("mean: " + str(total_mean))
+# print("std: " + str(total_std))
+
+MAX_PIXEL_VAL = 255
+MEAN = 58.09
+STD = 49.73
 
 # %%
 
@@ -47,6 +66,8 @@ class MRDS(Dataset):
 
         # transforms
         if self.transform:
+            series = (series - series.min()) / (series.max() -
+                                                series.min()) * MAX_PIXEL_VAL  # rescaling
             series = self.transform(series)
 
         # convert to 3chan
@@ -74,29 +95,39 @@ class MRDS(Dataset):
 # %%
 class MRKneeDataModule(pl.LightningDataModule):
 
-    def __init__(self, datadir, diagnosis):
+    def __init__(self, datadir, diagnosis, num_workers=0, transf=True):
         super().__init__()
         self.datadir = datadir
         self.diagnosis = diagnosis
-        self.train_transforms = transforms.Compose([
-            transforms.CenterCrop(224)
-        ])
-        self.val_transforms = transforms.Compose([
-            transforms.CenterCrop(224)
-        ])
+        self.num_workers = num_workers
+        self.train_transforms = None
+        self.val_transforms = None
+        if transf:
+            self.train_transforms = transforms.Compose([
+                transforms.CenterCrop(224),
+                transforms.Normalize(mean=[MEAN], std=[STD])
+            ])
+            self.val_transforms = transforms.Compose([
+                transforms.CenterCrop(224),
+                transforms.Normalize(mean=[MEAN], std=[STD])
+            ])
         self.train_ds = MRDS(datadir, 'train', self.diagnosis,  self.train_transforms)
         self.val_ds = MRDS(datadir, 'valid', self.diagnosis, self.val_transforms)
 
     # create datasets
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=1, shuffle=True, num_workers=2)
+        return DataLoader(self.train_ds, batch_size=1, shuffle=True, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=2)
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=self.num_workers)
+
 
 # %%
-# TESTING
-#md = MRKneeDataModule('data', 'acl')
-# md.train_ds[1]
+# # TESTING
+# md = MRKneeDataModule('data', 'acl', transforms=False)
+# type(md.train_ds[1][0])
+# %%
+
+
 # %%

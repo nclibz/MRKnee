@@ -6,13 +6,27 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from efficientnet_pytorch import EfficientNet
+import timm
 
 
 # TODO:
-# validation set med val_auc
+# Implementere FixRes?
 # scheduler
 # hvorfor tager jeg torch.max??
 # forstå view efter pool ordentligt
+
+# for et par epochs freeze feature extraction.
+# Derefter køre med stigende lr fra tail to head.
+
+# def on_epoch_start(self):
+#     if self.current_epoch == 0:
+#         self.freeze()
+#         self.trainer.lr_schedulers = ... # Define new scheduler
+
+#     if self.current_epoch == N_FREEZE_EPOCHS:
+#         self.unfreeze() # Or partially unfreeze
+#         self.trainer.lr_schedulers = ... # Define new scheduler
+
 
 # efficientnet Head
 #         # Convolution layers
@@ -24,26 +38,26 @@ from efficientnet_pytorch import EfficientNet
 #             x = self._dropout(x)
 #             x = self._fc(x)
 #         return x
-
-
 #        self._avg_pooling = nn.AdaptiveAvgPool2d(1)
 #        self._dropout = nn.Dropout(self._global_params.dropout_rate)
 #        self._fc = nn.Linear(out_channels, self._global_params.num_classes)
 # %%
 
 class MRKnee(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, model_name='efficientnet_b0'):
         super().__init__()
-        self.model_ax = EfficientNet.from_pretrained('efficientnet-b0')
-        self.model_sag = EfficientNet.from_pretrained('efficientnet-b0')
-        self.model_cor = EfficientNet.from_pretrained('efficientnet-b0')
+        self.model_ax = timm.create_model(
+            model_name, pretrained=True, num_classes=0)
+        self.model_sag = timm.create_model(
+            model_name, pretrained=True, num_classes=0)
+        self.model_cor = timm.create_model(
+            model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
         self.clf = nn.Linear(1280*3, 1)
 
     def run_model(self, model, series):
-        x = torch.squeeze(series, dim=0)  # only batch size 1 supported
-        x = model.extract_features(x)
-        x = F.adaptive_avg_pool2d(x, 1).view(x.size(0), -1)  # Hvad gør de?
-        x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør de?
+        x = torch.squeeze(series, dim=0)
+        x = model(x)
+        x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør det?
         return x
 
     def forward(self, x):
@@ -59,6 +73,13 @@ class MRKnee(pl.LightningModule):
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(
             logit, label, pos_weight=weight)
+        return loss
+
+    def validation_step(self, batch, batchidx):
+        imgs, label, sample_id, weight = batch
+        logit = self(imgs)
+        loss = F.binary_cross_entropy_with_logits(
+            logit, label, pos_weight=weight)
 
         self.preds.append(torch.sigmoid(logit).item())
         self.lbl.append(label.item())
@@ -67,10 +88,10 @@ class MRKnee(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=.01)
 
-    def on_epoch_start(self):
+    def on_validation_epoch_start(self):
         self.preds = []
         self.lbl = []
 
-    def on_epoch_end(self):
-        self.log('auc', auroc(torch.Tensor(
+    def on_validation_epoch_end(self):
+        self.log('val_auc', auroc(torch.Tensor(
             self.preds), torch.Tensor(self.lbl), pos_label=1), prog_bar=True)
