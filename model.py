@@ -28,20 +28,25 @@ import timm
 #         self.unfreeze() # Or partially unfreeze
 #         self.trainer.lr_schedulers = ... # Define new scheduler
 
+nn.BatchNorm2d(3)
 # %%
 
+
 class MRKnee(pl.LightningModule):
-    def __init__(self, model_name='efficientnet_b0'):
+    def __init__(self, model_name='efficientnet_b1', learning_rate=0.001):
         super().__init__()
+        self.learning_rate = learning_rate
+        # layers
+        self.bn_ax = nn.BatchNorm2d(3)
         self.model_ax = timm.create_model(
             model_name, pretrained=True, num_classes=0)
+        self.bn_sag = nn.BatchNorm2d(3)
         self.model_sag = timm.create_model(
             model_name, pretrained=True, num_classes=0)
+        self.bn_cor = nn.BatchNorm2d(3)
         self.model_cor = timm.create_model(
             model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
-        self.bn_ax = nn.BatchNorm2d(3)
-        self.bn_sag = nn.BatchNorm2d(3)
-        self.bn_cor = nn.BatchNorm2d(3)
+
         self.clf = nn.Linear(1280*3, 1)
 
     def run_model(self, model, bn, series):
