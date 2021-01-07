@@ -16,7 +16,6 @@ import timm
 
 
 # fine_tuning
-# fine-tune efficientnet
 #   for et par epochs freeze feature extraction.
 #   discriminative learning rate - stigende lr fra tail to head.
 # implementere en finetuning class ud fra fine-tuning eksemplet ??
@@ -33,6 +32,9 @@ import timm
 #     if self.current_epoch == N_FREEZE_EPOCHS:
 #         self.unfreeze() # Or partially unfreeze
 #         self.trainer.lr_schedulers = ... # Define new scheduler
+
+
+# NÅET TIL: HAR LAVET SIMPEL FREEZE MEN DEN LAVER FEJL??
 
 # %%
 
@@ -130,9 +132,11 @@ class MRKnee(pl.LightningModule):
     def freeze(self, module):
         for param in module.parameters():
             param.requires_grad = False
+        return module
 
     def unfreeze(self, module) -> None:
         for param in module.parameters():
             param.requires_grad = True
+        return module
 
 # %%

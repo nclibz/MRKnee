@@ -29,12 +29,12 @@ if __name__ == '__main__':
     DEBUG = True
 
     dm = MRKneeDataModule(datadir='data', diagnosis="meniscus",
-                          num_workers=2, debug=DEBUG)
-    model = MRKnee(model_name='efficientnet_b0', debug=DEBUG)
+                          num_workers=2)
+    model = MRKnee(backbone='tf_efficientnet_b2_ns')
     trainer = pl.Trainer(gpus=1,
                          precision=16,
                          max_epochs=2,
-                         limit_train_batches=0.1,
+                         limit_train_batches=1,
                          num_sanity_val_steps=0,
                          logger=tb_logger,
                          callbacks=[checkpoint],
