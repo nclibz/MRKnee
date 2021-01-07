@@ -5,6 +5,7 @@ from pytorch_lightning.metrics.functional.classification import auroc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.container import ModuleList
 from torch.optim.lr_scheduler import OneCycleLR
 import timm
 
@@ -39,38 +40,23 @@ import timm
 # %%
 
 class MRKnee(pl.LightningModule):
-    def __init__(self, backbone='efficientnet_b1',
+    def __init__(self, backbone='tf_efficientnet_b0_ns',
                  learning_rate=0.0001,
                  debug=False):
         super().__init__()
         self.learning_rate = learning_rate
-        self.debug = debug
+        self.num_models = 1 if debug == True else 3  # kan nok tage det som flag fra ds?
 
-        # layers
-
-        if self.debug:
-            self.bn_ax = nn.BatchNorm2d(3)
-            self.model_ax = timm.create_model(
-                backbone, pretrained=True, num_classes=0)
-            self.clf = nn.Linear(self.model_ax.num_features, 1)
-
-        else:
-            self.bn_ax = nn.BatchNorm2d(3)
-            self.model_ax = timm.create_model(
-                backbone, pretrained=True, num_classes=0)
-            self.bn_sag = nn.BatchNorm2d(3)
-            self.model_sag = timm.create_model(
-                backbone, pretrained=True, num_classes=0)
-            self.bn_cor = nn.BatchNorm2d(3)
-            self.model_cor = timm.create_model(
-                backbone, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
-            self.clf = nn.Linear(self.model_ax.num_features*3, 1)
-
-        # free pretrained - make prettey with modulelist?
-        self.model_ax = self.freeze(module=self.model_ax)
-
-        self.model_sag = self.freeze(module=self.model_sag)
-        self.model_cor = self.freeze(module=self.model_cor)
+        self.backbones = [timm.create_model(
+            backbone, pretrained=True, num_classes=0) for i in range(self.num_models)]
+        self.num_features = self.backbones[0].num_features
+        self.backbones = ModuleList(self.backbones)
+        # freeze backbones
+        # self.backbones = ModuleList([self.freeze(module.as_sequential())
+        #                            for module in self.backbones])
+        self.bn_layers = ModuleList([nn.BatchNorm2d(3)
+                                     for i in range(self.num_models)])
+        self.clf = nn.Linear(self.num_features*self.num_models, 1)
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
@@ -80,16 +66,11 @@ class MRKnee(pl.LightningModule):
         return x
 
     def forward(self, x):
-
-        if self.debug:
-            y = self.run_model(self.model_ax, self.bn_ax, x)
-        else:
-            ax, sag, cor = x
-            ax = self.run_model(self.model_ax, self.bn_ax, ax)
-            sag = self.run_model(self.model_sag, self.bn_sag, sag)
-            cor = self.run_model(self.model_cor, self.bn_cor, cor)
-            y = torch.cat((ax, sag, cor), 1)
-        return self.clf(y)
+        x = [self.run_model(model, bn, series)
+             for model, bn, series in zip(self.backbones, self.bn_layers, x)]
+        x = torch.cat(x, 1)
+        x = self.clf(x)
+        return x
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -106,9 +87,7 @@ class MRKnee(pl.LightningModule):
 
     def on_train_epoch_start(self):
         if self.current_epoch == 3:
-            self.unfreeze(self.model_ax)
-            self.unfreeze(self.model_cor)
-            self.unfreeze(self.model_sag)
+            self.backbones = [self.unfreeze(module) for module in self.backbones]
 
     def validation_step(self, batch, batchidx):
         imgs, label, sample_id, weight = batch
