@@ -10,15 +10,20 @@ import timm
 
 
 # TODO:
-# Implementere FixRes?
+# efficientnet models tager forskellige størrelser - skal upscale / padde tilsvarende
 # scheduler -> skal finde en måde at få total steps på
 # hvorfor tager jeg torch.max??
+
+
+# fine_tuning
 # fine-tune efficientnet
 #   for et par epochs freeze feature extraction.
-#   discriminative learning rate
-# Derefter køre med stigende lr fra tail to head.
-# smart måde selv at få n_pool_out? - hvordan gør timm?
-
+#   discriminative learning rate - stigende lr fra tail to head.
+# implementere en finetuning class ud fra fine-tuning eksemplet ??
+# timm models har model.as_sequential
+# kan slices som list og er defineret i blocks.
+# finder den største model der kan fitte i mem på colab
+# lære arkitekturen og speciallave en func i on_train_epoch der freezer
 
 # def on_epoch_start(self):
 #     if self.current_epoch == 0:
@@ -29,12 +34,10 @@ import timm
 #         self.unfreeze() # Or partially unfreeze
 #         self.trainer.lr_schedulers = ... # Define new scheduler
 
-nn.BatchNorm2d(3)
 # %%
 
-
 class MRKnee(pl.LightningModule):
-    def __init__(self, model_name='efficientnet_b1',
+    def __init__(self, backbone='efficientnet_b1',
                  learning_rate=0.0001,
                  debug=False):
         super().__init__()
@@ -46,19 +49,19 @@ class MRKnee(pl.LightningModule):
         if self.debug:
             self.bn_ax = nn.BatchNorm2d(3)
             self.model_ax = timm.create_model(
-                model_name, pretrained=True, num_classes=0)
+                backbone, pretrained=True, num_classes=0)
             self.clf = nn.Linear(self.model_ax.num_features, 1)
 
         else:
             self.bn_ax = nn.BatchNorm2d(3)
-            self.model_ax = timm.create_model(
-                model_name, pretrained=True, num_classes=0)
+            self.model_ax = self.freeze(timm.create_model(
+                backbone, pretrained=True, num_classes=0))
             self.bn_sag = nn.BatchNorm2d(3)
-            self.model_sag = timm.create_model(
-                model_name, pretrained=True, num_classes=0)
+            self.model_sag = self.freeze(timm.create_model(
+                backbone, pretrained=True, num_classes=0))
             self.bn_cor = nn.BatchNorm2d(3)
-            self.model_cor = timm.create_model(
-                model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
+            self.model_cor = self.freeze(timm.create_model(
+                backbone, pretrained=True, num_classes=0))  # set global_pool='' to return unpooled
             self.clf = nn.Linear(self.model_ax.num_features*3, 1)
 
     def run_model(self, model, bn, series):
@@ -93,6 +96,12 @@ class MRKnee(pl.LightningModule):
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
+    def on_train_epoch_start(self):
+        if self.current_epoch == 3:
+            self.unfreeze(self.model_ax)
+            self.unfreeze(self.model_cor)
+            self.unfreeze(self.model_sag)
+
     def validation_step(self, batch, batchidx):
         imgs, label, sample_id, weight = batch
         logit = self(imgs)
@@ -112,5 +121,12 @@ class MRKnee(pl.LightningModule):
         self.log('val_auc', auroc(torch.Tensor(
             self.preds), torch.Tensor(self.lbl), pos_label=1), prog_bar=True)
 
+    def freeze(self, module):
+        for param in module.parameters():
+            param.requires_grad = False
+
+    def unfreeze(module) -> None:
+        for param in module.parameters():
+            param.requires_grad = True
 
 # %%

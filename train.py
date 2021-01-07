@@ -20,7 +20,7 @@ from argparse import ArgumentParser
 
 # %%
 if __name__ == '__main__':
-
+    pl.seed_everything(123)
     tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
     checkpoint = pl.callbacks.ModelCheckpoint(
@@ -37,7 +37,8 @@ if __name__ == '__main__':
                          limit_train_batches=0.1,
                          num_sanity_val_steps=0,
                          logger=tb_logger,
-                         callbacks=[checkpoint])
+                         callbacks=[checkpoint],
+                         deterministic=True)
     trainer.fit(model, dm)
 
 

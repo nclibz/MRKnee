@@ -5,7 +5,6 @@ from torchvision import transforms
 import pytorch_lightning as pl
 import numpy as np
 import csv
-torch.manual_seed(17)
 
 
 # TODO:
