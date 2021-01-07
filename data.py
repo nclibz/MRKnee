@@ -40,11 +40,12 @@ STD = 49.73
 
 
 class MRDS(Dataset):
-    def __init__(self, datadir,  stage, diagnosis, transform=None):
+    def __init__(self, datadir,  stage, diagnosis, transform=None, debug=False):
         super().__init__()
         self.transform = transform
         self.stage = stage
         self.datadir = datadir
+        self.debug = debug
 
         # label_dict
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
@@ -72,6 +73,7 @@ class MRDS(Dataset):
 
         # convert to 3chan
         series = torch.stack((series,)*3, axis=1)
+
         return series
 
     def __getitem__(self, index):
@@ -79,6 +81,9 @@ class MRDS(Dataset):
 
         series = [self.prep_series(plane, index)
                   for plane in ['axial', 'sagittal', 'coronal']]
+
+        if self.debug:
+            series = series[0]
 
         #  label
         label = torch.as_tensor(int(self.labels[index])).unsqueeze(
@@ -95,11 +100,12 @@ class MRDS(Dataset):
 # %%
 class MRKneeDataModule(pl.LightningDataModule):
 
-    def __init__(self, datadir, diagnosis, num_workers=0, transf=True):
+    def __init__(self, datadir, diagnosis, num_workers=0, transf=True, debug=False):
         super().__init__()
         self.datadir = datadir
         self.diagnosis = diagnosis
         self.num_workers = num_workers
+        self.debug = debug
         self.train_transforms = None
         self.val_transforms = None
         if transf:
@@ -111,8 +117,10 @@ class MRKneeDataModule(pl.LightningDataModule):
                 transforms.CenterCrop(224),
                 # transforms.Normalize(mean=[MEAN], std=[STD])
             ])
-        self.train_ds = MRDS(datadir, 'train', self.diagnosis,  self.train_transforms)
-        self.val_ds = MRDS(datadir, 'valid', self.diagnosis, self.val_transforms)
+        self.train_ds = MRDS(datadir, 'train', self.diagnosis,
+                             self.train_transforms, debug=self.debug)
+        self.val_ds = MRDS(datadir, 'valid', self.diagnosis,
+                           self.val_transforms, debug=self.debug)
 
     # create datasets
 

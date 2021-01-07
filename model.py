@@ -11,7 +11,7 @@ import timm
 
 # TODO:
 # Implementere FixRes?
-# scheduler
+# scheduler -> skal finde en måde at få total steps på
 # hvorfor tager jeg torch.max??
 # Logge val_loss så jeg kan bruge overfit_batches??
 # der er vidst noget galt med val_auc eller med min model. Første epoch er værre en random??
@@ -34,25 +34,31 @@ nn.BatchNorm2d(3)
 
 class MRKnee(pl.LightningModule):
     def __init__(self, model_name='efficientnet_b1',
-                 learning_rate=0.001):
+                 learning_rate=0.001,
+                 debug=False):
         super().__init__()
         self.learning_rate = learning_rate
-        # layers
-        self.bn_ax = nn.BatchNorm2d(3)
-        self.model_ax = timm.create_model(
-            model_name, pretrained=True, num_classes=0)
-        self.bn_sag = nn.BatchNorm2d(3)
-        self.model_sag = timm.create_model(
-            model_name, pretrained=True, num_classes=0)
-        self.bn_cor = nn.BatchNorm2d(3)
-        self.model_cor = timm.create_model(
-            model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
-        self.clf = nn.Linear(1280*3, 1)
+        self.debug = debug
 
-    def setup(self, stage):
-        if stage == 'fit':
-            train_batches = len(self.train_dataloader())
-            self.total_steps = (self.hparams.epochs * train_batches)
+        # layers
+
+        if self.debug:
+            self.bn_ax = nn.BatchNorm2d(3)
+            self.model_ax = timm.create_model(
+                model_name, pretrained=True, num_classes=0)
+            self.clf = nn.Linear(1280, 1)
+
+        else:
+            self.bn_ax = nn.BatchNorm2d(3)
+            self.model_ax = timm.create_model(
+                model_name, pretrained=True, num_classes=0)
+            self.bn_sag = nn.BatchNorm2d(3)
+            self.model_sag = timm.create_model(
+                model_name, pretrained=True, num_classes=0)
+            self.bn_cor = nn.BatchNorm2d(3)
+            self.model_cor = timm.create_model(
+                model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
+            self.clf = nn.Linear(1280*3, 1)
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
@@ -62,11 +68,15 @@ class MRKnee(pl.LightningModule):
         return x
 
     def forward(self, x):
-        ax, sag, cor = x
-        ax = self.run_model(self.model_ax, self.bn_ax, ax)
-        sag = self.run_model(self.model_sag, self.bn_sag, sag)
-        cor = self.run_model(self.model_cor, self.bn_cor, cor)
-        y = torch.cat((ax, sag, cor), 1)
+
+        if self.debug:
+            y = self.run_model(self.model_ax, self.bn_ax, x)
+        else:
+            ax, sag, cor = x
+            ax = self.run_model(self.model_ax, self.bn_ax, ax)
+            sag = self.run_model(self.model_sag, self.bn_sag, sag)
+            cor = self.run_model(self.model_cor, self.bn_cor, cor)
+            y = torch.cat((ax, sag, cor), 1)
         return self.clf(y)
 
     def training_step(self, batch, batchidx):
@@ -74,7 +84,7 @@ class MRKnee(pl.LightningModule):
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(
             logit, label, pos_weight=weight)
-        self.log('train_loss', loss, prog_bar=True)
+        self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
     def validation_step(self, batch, batchidx):
@@ -85,14 +95,13 @@ class MRKnee(pl.LightningModule):
 
         self.preds.append(torch.sigmoid(logit).item())
         self.lbl.append(label.item())
-        self.log('val_loss', loss, prog_bar=True)
+        self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=True)
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, weight_decay=.01)
-        scheduler = OneCycleLR(optimizer, max_lr=self.learning_rate,
-                               total_steps=self.total_steps)
-        return [optimizer], [scheduler]
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=self.learning_rate, weight_decay=.01)
+        return optimizer
 
     def on_validation_epoch_start(self):
         self.preds = []
