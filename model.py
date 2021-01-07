@@ -13,10 +13,11 @@ import timm
 # Implementere FixRes?
 # scheduler -> skal finde en måde at få total steps på
 # hvorfor tager jeg torch.max??
-# Logge val_loss så jeg kan bruge overfit_batches??
-# der er vidst noget galt med val_auc eller med min model. Første epoch er værre en random??
-# for et par epochs freeze feature extraction.
+# fine-tune efficientnet
+#   for et par epochs freeze feature extraction.
+#   discriminative learning rate
 # Derefter køre med stigende lr fra tail to head.
+# smart måde selv at få n_pool_out? - hvordan gør timm?
 
 
 # def on_epoch_start(self):
@@ -34,7 +35,7 @@ nn.BatchNorm2d(3)
 
 class MRKnee(pl.LightningModule):
     def __init__(self, model_name='efficientnet_b1',
-                 learning_rate=0.001,
+                 learning_rate=0.0001,
                  debug=False):
         super().__init__()
         self.learning_rate = learning_rate
@@ -46,7 +47,7 @@ class MRKnee(pl.LightningModule):
             self.bn_ax = nn.BatchNorm2d(3)
             self.model_ax = timm.create_model(
                 model_name, pretrained=True, num_classes=0)
-            self.clf = nn.Linear(1280, 1)
+            self.clf = nn.Linear(self.model_ax.num_features, 1)
 
         else:
             self.bn_ax = nn.BatchNorm2d(3)
@@ -58,7 +59,7 @@ class MRKnee(pl.LightningModule):
             self.bn_cor = nn.BatchNorm2d(3)
             self.model_cor = timm.create_model(
                 model_name, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
-            self.clf = nn.Linear(1280*3, 1)
+            self.clf = nn.Linear(self.model_ax.num_features*3, 1)
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
