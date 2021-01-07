@@ -65,10 +65,10 @@ class MRKnee(pl.LightningModule):
             self.clf = nn.Linear(self.model_ax.num_features*3, 1)
 
         # free pretrained - make prettey with modulelist?
-        self.model_ax = self.freeze(self.model_ax)
+        self.model_ax = self.freeze(module=self.model_ax)
 
-        self.model_sag = self.freeze(self.model_sag)
-        self.model_cor = self.freeze(self.model_cor)
+        self.model_sag = self.freeze(module=self.model_sag)
+        self.model_cor = self.freeze(module=self.model_cor)
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
