@@ -79,6 +79,11 @@ class MRKnee(pl.LightningModule):
             y = torch.cat((ax, sag, cor), 1)
         return self.clf(y)
 
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=self.learning_rate, weight_decay=.01)
+        return optimizer
+
     def training_step(self, batch, batchidx):
         imgs, label, sample_id, weight = batch
         logit = self(imgs)
@@ -95,13 +100,8 @@ class MRKnee(pl.LightningModule):
 
         self.preds.append(torch.sigmoid(logit).item())
         self.lbl.append(label.item())
-        self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=True)
+        self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.learning_rate, weight_decay=.01)
-        return optimizer
 
     def on_validation_epoch_start(self):
         self.preds = []
@@ -110,5 +110,6 @@ class MRKnee(pl.LightningModule):
     def on_validation_epoch_end(self):
         self.log('val_auc', auroc(torch.Tensor(
             self.preds), torch.Tensor(self.lbl), pos_label=1), prog_bar=True)
+
 
 # %%
