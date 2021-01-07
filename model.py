@@ -54,15 +54,21 @@ class MRKnee(pl.LightningModule):
 
         else:
             self.bn_ax = nn.BatchNorm2d(3)
-            self.model_ax = self.freeze(timm.create_model(
-                backbone, pretrained=True, num_classes=0))
+            self.model_ax = timm.create_model(
+                backbone, pretrained=True, num_classes=0)
             self.bn_sag = nn.BatchNorm2d(3)
-            self.model_sag = self.freeze(timm.create_model(
-                backbone, pretrained=True, num_classes=0))
+            self.model_sag = timm.create_model(
+                backbone, pretrained=True, num_classes=0)
             self.bn_cor = nn.BatchNorm2d(3)
-            self.model_cor = self.freeze(timm.create_model(
-                backbone, pretrained=True, num_classes=0))  # set global_pool='' to return unpooled
+            self.model_cor = timm.create_model(
+                backbone, pretrained=True, num_classes=0)  # set global_pool='' to return unpooled
             self.clf = nn.Linear(self.model_ax.num_features*3, 1)
+
+        # free pretrained - make prettey with modulelist?
+        self.model_ax = self.freeze(self.model_ax)
+
+        self.model_sag = self.freeze(self.model_sag)
+        self.model_cor = self.freeze(self.model_cor)
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
