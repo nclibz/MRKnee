@@ -125,7 +125,7 @@ class MRKnee(pl.LightningModule):
         for param in module.parameters():
             param.requires_grad = False
 
-    def unfreeze(self.module) -> None:
+    def unfreeze(self, module) -> None:
         for param in module.parameters():
             param.requires_grad = True
 
