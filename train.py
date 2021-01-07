@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     dm = MRKneeDataModule(datadir='data', diagnosis="meniscus",
                           num_workers=2, debug=DEBUG)
-    model = MRKnee(backbone='tf_efficientnet_b0_ns', debug=DEBUG)
+    model = MRKnee(backbone='tf_efficientnet_b0_ns', debug=DEBUG, learning_rate=1e-5)
     trainer = pl.Trainer(gpus=1,
                          precision=16,
                          max_epochs=2,

@@ -50,10 +50,10 @@ class MRKnee(pl.LightningModule):
         self.backbones = [timm.create_model(
             backbone, pretrained=True, num_classes=0) for i in range(self.num_models)]
         self.num_features = self.backbones[0].num_features
-        self.backbones = ModuleList(self.backbones)
+        # self.backbones = ModuleList(self.backbones)
         # freeze backbones
-        # self.backbones = ModuleList([self.freeze(module.as_sequential())
-        #                            for module in self.backbones])
+        self.backbones = ModuleList([self.freeze(module.as_sequential())
+                                     for module in self.backbones])
         self.bn_layers = ModuleList([nn.BatchNorm2d(3)
                                      for i in range(self.num_models)])
         self.clf = nn.Linear(self.num_features*self.num_models, 1)
