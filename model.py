@@ -87,7 +87,8 @@ class MRKnee(pl.LightningModule):
 
     def on_train_epoch_start(self):
         if self.current_epoch == 3:
-            self.backbones = [self.unfreeze(module) for module in self.backbones]
+            self.backbones = ModuleList([self.unfreeze(module)
+                                         for module in self.backbones])
 
     def validation_step(self, batch, batchidx):
         imgs, label, sample_id, weight = batch
