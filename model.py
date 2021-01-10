@@ -33,8 +33,9 @@ class MRKnee(pl.LightningModule):
                                      for module in self.backbones])
         self.bn_layers = ModuleList([nn.BatchNorm2d(3)
                                      for i in range(self.num_models)])
-        self.clf = Sequential(nn.Linear(self.num_features*self.num_models, 512),
-                              nn.Linear(512, 1))
+        # self.clf = Sequential(nn.Linear(self.num_features*self.num_models, 512),
+        #                      nn.Linear(512, 1))
+        self.clf = nn.Linear(self.num_features*self.num_models, 1)
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)

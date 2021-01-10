@@ -86,9 +86,10 @@ class MRKneeDataModule(pl.LightningDataModule):
         self.val_transforms = None
         if transf:
             self.train_transforms = transforms.Compose([
-                transforms.to
+                transforms.ToPILImage(),
                 transforms.CenterCrop(240),
-                transforms.RandomAffine(25, translate=(0.25, 0.25))
+                transforms.RandomAffine(25, translate=(0.25, 0.25)),
+                transforms.ToTensor()  # den scaler!!
                 # transforms.Normalize(mean=[MEAN], std=[STD]) afprøver bn layer som første input istedet
             ])
             self.val_transforms = transforms.Compose([
