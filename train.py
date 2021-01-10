@@ -11,13 +11,6 @@ from argparse import ArgumentParser
 %autoreload 2
 
 
-# TODO:
-
-# lave  argparser? - behøver jeg næsten kun til submission?
-# Tune hyperparams
-# error analysis - find top losses - visualise!
-
-
 # %%
 if __name__ == '__main__':
     pl.seed_everything(123)

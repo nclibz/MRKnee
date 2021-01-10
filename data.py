@@ -7,33 +7,11 @@ import numpy as np
 import csv
 
 
-# TODO:
-# lave visualiser for at se hvad dl spytter ud
-# lave transforms
-# forstå mean og normalisering på medical data?
-# mit mean bliver meget lavt ved nedenstående kode
-
-
-# beregne mean og std for dataloader
-# mean = 0
-# meansq = 0
-# count = 0
-
-# for index, data in enumerate(md.train_dataloader()):
-#     data = data[0][0]
-#     mean = data.sum()
-#     meansq = meansq + (data**2).sum()
-#     count += np.prod(data.shape)
-
-# total_mean = mean/count
-# total_var = (meansq/count) - (total_mean**2)
-# total_std = torch.sqrt(total_var)
-# print("mean: " + str(total_mean))
-# print("std: " + str(total_std))
-
 MAX_PIXEL_VAL = 255
 MEAN = 58.09
 STD = 49.73
+
+# series = (series - series.min()) / (series.max() - series.min()) * MAX_PIXEL_VAL  # rescaling
 
 # %%
 
@@ -66,8 +44,7 @@ class MRDS(Dataset):
 
         # transforms
         if self.transform:
-            series = (series - series.min()) / (series.max() -
-                                                series.min()) * MAX_PIXEL_VAL  # rescaling
+
             series = self.transform(series)
 
         # convert to 3chan
@@ -109,11 +86,12 @@ class MRKneeDataModule(pl.LightningDataModule):
         self.val_transforms = None
         if transf:
             self.train_transforms = transforms.Compose([
-                transforms.CenterCrop(224),
+                transforms.CenterCrop(240),
+                transforms.RandomAffine(25, translate=(0.25, 0.25))
                 # transforms.Normalize(mean=[MEAN], std=[STD]) afprøver bn layer som første input istedet
             ])
             self.val_transforms = transforms.Compose([
-                transforms.CenterCrop(224),
+                transforms.CenterCrop(240),
                 # transforms.Normalize(mean=[MEAN], std=[STD])
             ])
         self.train_ds = MRDS(datadir, 'train', self.diagnosis,
@@ -132,6 +110,6 @@ class MRKneeDataModule(pl.LightningDataModule):
 
 # %%
 # TESTING
-#md = MRKneeDataModule('data', 'meniscus', transf=False)
+# md = MRKneeDataModule('data', 'meniscus', transf=False)
 # len(md.train_ds)
 # %%
