@@ -33,7 +33,8 @@ class MRDS(Dataset):
             pos_cases = [case for case in self.cases if case[1] == 1]
             pos_count = len(pos_cases)
             neg_count = len(neg_cases)
-            w = neg_count//pos_count if pos_count < neg_count else pos_count//neg_count
+            w = round(
+                neg_count/pos_count) if pos_count < neg_count else round(pos_count/neg_count)
             self.cases = (neg_cases * int(w)) + \
                 pos_cases if neg_count < pos_count else (pos_cases*int(w))+neg_cases
 
@@ -72,11 +73,12 @@ class MRDS(Dataset):
 # %%
 class MRKneeDataModule(pl.LightningDataModule):
 
-    def __init__(self, datadir, diagnosis, num_workers=0, transf=True, debug=False):
+    def __init__(self, datadir, diagnosis, num_workers=0, transf=True, debug=False, upsample=True):
         super().__init__()
         self.datadir = datadir
         self.diagnosis = diagnosis
         self.num_workers = num_workers
+        self.upsample = upsample
         self.debug = debug
         self.train_transforms = None
         self.val_transforms = None
@@ -91,9 +93,9 @@ class MRKneeDataModule(pl.LightningDataModule):
                 # transforms.Normalize(mean=[MEAN], std=[STD])
             ])
         self.train_ds = MRDS(datadir, 'train', self.diagnosis,
-                             self.train_transforms, debug=self.debug)
+                             self.train_transforms, debug=self.debug, upsample=self.upsample)
         self.val_ds = MRDS(datadir, 'valid', self.diagnosis,
-                           self.val_transforms, debug=self.debug)
+                           self.val_transforms, debug=self.debug, upsample=self.upsample)
 
     # create datasets
 
@@ -106,6 +108,6 @@ class MRKneeDataModule(pl.LightningDataModule):
 
 # %%
 # TESTING
-# md = MRKneeDataModule('data', 'meniscus', transf=False)
+#md = MRKneeDataModule('data', 'meniscus', upsample=False)
 # len(md.train_ds)
 # %%
