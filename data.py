@@ -28,6 +28,9 @@ class MRDS(Dataset):
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
             self.cases = [(row[0], int(row[1]))
                           for row in list(csv.reader(f))]
+
+        if stage == 'valid':
+            upsample = False
         if upsample:
             neg_cases = [case for case in self.cases if case[1] == 0]
             pos_cases = [case for case in self.cases if case[1] == 1]
