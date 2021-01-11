@@ -82,8 +82,8 @@ class MRKnee(pl.LightningModule):
 
         # logging
         #self.v_sample_loss[sample_id] = loss.item()
-        self.preds.append(torch.sigmoid(logit))
-        self.lbl.append(label)
+        self.preds.append(torch.sigmoid(logit).squeeze(0))
+        self.lbl.append(label.squeeze(0))
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
@@ -92,7 +92,8 @@ class MRKnee(pl.LightningModule):
         self.lbl = []
 
     def on_validation_epoch_end(self):
-        self.log('val_auc', auroc(self.preds, self.lbl, pos_label=1), prog_bar=True)
+        self.log('val_auc', auroc(torch.cat(self.preds), torch.cat(self.lbl), pos_label=1),
+                 prog_bar=True, on_epoch=True)
 
     def unfreeze(self, module, idx):
         for param in module[idx:].parameters():
