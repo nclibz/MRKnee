@@ -16,7 +16,7 @@ class MRKnee(pl.LightningModule):
     def __init__(self, backbone='tf_efficientnet_b0_ns',
                  learning_rate=0.0001,
                  freeze_from=4,
-                 unfreeze_epoch=5,
+                 unfreeze_epoch=5,  # -1 for not freezing any layers
                  debug=False):
         super().__init__()
         self.learning_rate = learning_rate
@@ -66,7 +66,7 @@ class MRKnee(pl.LightningModule):
 
         # logging
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
-        self.t_sample_loss[sample_id] = loss.item()
+        #self.t_sample_loss[sample_id] = loss.item()
         return loss
 
     def on_train_epoch_start(self):
@@ -81,9 +81,9 @@ class MRKnee(pl.LightningModule):
             logit, label)
 
         # logging
-        self.v_sample_loss[sample_id] = loss.item()
-        self.preds.append(torch.sigmoid(logit).item())
-        self.lbl.append(label.item())
+        #self.v_sample_loss[sample_id] = loss.item()
+        self.preds.append(torch.sigmoid(logit))
+        self.lbl.append(label)
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
@@ -92,8 +92,7 @@ class MRKnee(pl.LightningModule):
         self.lbl = []
 
     def on_validation_epoch_end(self):
-        self.log('val_auc', auroc(torch.Tensor(
-            self.preds), torch.Tensor(self.lbl), pos_label=1), prog_bar=True)
+        self.log('val_auc', auroc(self.preds, self.lbl, pos_label=1), prog_bar=True)
 
     def unfreeze(self, module, idx):
         for param in module[idx:].parameters():
