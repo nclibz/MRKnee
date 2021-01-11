@@ -26,12 +26,13 @@ if __name__ == '__main__':
     model = MRKnee(backbone='tf_efficientnet_b0_ns', debug=DEBUG, learning_rate=1e-5)
     trainer = pl.Trainer(gpus=1,
                          precision=16,
-                         max_epochs=2,
+                         max_epochs=1,
                          limit_train_batches=10,
                          num_sanity_val_steps=0,
                          logger=tb_logger,
                          callbacks=[checkpoint],
-                         deterministic=True)
+                         deterministic=True, profiler="simple"
+                         )
     trainer.fit(model, dm)
 
 

@@ -15,7 +15,7 @@ import timm
 class MRKnee(pl.LightningModule):
     def __init__(self, backbone='tf_efficientnet_b0_ns',
                  learning_rate=0.0001,
-                 freeze_from=7,
+                 freeze_from=4,
                  unfreeze_epoch=5,
                  debug=False):
         super().__init__()
@@ -36,6 +36,8 @@ class MRKnee(pl.LightningModule):
         # self.clf = Sequential(nn.Linear(self.num_features*self.num_models, 512),
         #                      nn.Linear(512, 1))
         self.clf = nn.Linear(self.num_features*self.num_models, 1)
+        self.t_sample_loss = {}
+        self.v_sample_loss = {}
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
@@ -57,11 +59,14 @@ class MRKnee(pl.LightningModule):
         return optimizer
 
     def training_step(self, batch, batchidx):
-        imgs, label, sample_id, weight = batch
+        imgs, label, sample_id = batch
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(
-            logit, label, pos_weight=weight)
+            logit, label)
+
+        # logging
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        self.t_sample_loss[sample_id] = loss.item()
         return loss
 
     def on_train_epoch_start(self):
@@ -70,11 +75,13 @@ class MRKnee(pl.LightningModule):
                                          for module in self.backbones])
 
     def validation_step(self, batch, batchidx):
-        imgs, label, sample_id, weight = batch
+        imgs, label, sample_id = batch
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(
-            logit, label, pos_weight=weight)
+            logit, label)
 
+        # logging
+        self.v_sample_loss[sample_id] = loss.item()
         self.preds.append(torch.sigmoid(logit).item())
         self.lbl.append(label.item())
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)

@@ -17,60 +17,56 @@ STD = 49.73
 
 
 class MRDS(Dataset):
-    def __init__(self, datadir,  stage, diagnosis, transform=None, debug=False):
+    def __init__(self, datadir,  stage, diagnosis, transform=None, debug=False, upsample=True):
         super().__init__()
         self.transform = transform
         self.stage = stage
         self.datadir = datadir
         self.debug = debug
 
-        # label_dict
+        # load data
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
-            self.label_dict = {row[0]: int(row[1])
-                               for row in list(csv.reader(f))}
+            self.cases = [(row[0], int(row[1]))
+                          for row in list(csv.reader(f))]
+        if upsample:
+            neg_cases = [case for case in self.cases if case[1] == 0]
+            pos_cases = [case for case in self.cases if case[1] == 1]
+            pos_count = len(pos_cases)
+            neg_count = len(neg_cases)
+            w = neg_count//pos_count if pos_count < neg_count else pos_count//neg_count
+            self.cases = (neg_cases * int(w)) + \
+                pos_cases if neg_count < pos_count else (pos_cases*int(w))+neg_cases
 
-        self.labels = list(self.label_dict.values())
-        self.ids = list(self.label_dict.keys())
+    def __getitem__(self, index):
 
-        # calculate  pos_weight
-        pos_count = np.sum(self.labels)
-        neg_count = len(self.labels) - pos_count
-        self.weight = torch.as_tensor(neg_count / pos_count).unsqueeze(0)
+        id, label = self.cases[index]
 
-    def prep_series(self, plane, index):
-        id = self.ids[index]
+        imgs = [self.prep_imgs(id, plane)
+                for plane in ['axial', 'sagittal', 'coronal']]
+
+        if self.debug:
+            imgs = imgs[0]
+
+        label = torch.as_tensor(label, dtype=torch.float32).unsqueeze(0)
+
+        return imgs, label, id
+
+    def prep_imgs(self, id, plane):
         path = f'{self.datadir}/{self.stage}/{plane}/{id}.npy'
-        series = torch.from_numpy(np.load(path)).to(dtype=torch.float32)
+        imgs = torch.from_numpy(np.load(path)).to(dtype=torch.float32)
 
         # transforms
         if self.transform:
 
-            series = self.transform(series)
+            imgs = self.transform(imgs)
 
         # convert to 3chan
-        series = torch.stack((series,)*3, axis=1)
+        imgs = torch.stack((imgs,)*3, axis=1)
 
-        return series
-
-    def __getitem__(self, index):
-        # load imgs
-
-        series = [self.prep_series(plane, index)
-                  for plane in ['axial', 'sagittal', 'coronal']]
-
-        if self.debug:
-            series = series[0]
-
-        #  label
-        label = torch.as_tensor(int(self.labels[index])).unsqueeze(
-            0).to(dtype=torch.float32)
-
-        # sample_id
-        sample_id = self.ids[index]
-        return series, label, sample_id, self.weight
+        return imgs
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.cases)
 
 
 # %%
@@ -86,8 +82,8 @@ class MRKneeDataModule(pl.LightningDataModule):
         self.val_transforms = None
         if transf:
             self.train_transforms = transforms.Compose([
+                transforms.RandomAffine(25, translate=(0.25, 0.25)),
                 transforms.CenterCrop(240),
-                transforms.RandomAffine(25, translate=(0.25, 0.25))
                 # transforms.Normalize(mean=[MEAN], std=[STD]) afprøver bn layer som første input istedet
             ])
             self.val_transforms = transforms.Compose([
