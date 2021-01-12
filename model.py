@@ -17,11 +17,13 @@ class MRKnee(pl.LightningModule):
                  learning_rate=0.0001,
                  freeze_from=4,
                  unfreeze_epoch=5,  # -1 for not freezing any layers
+                 log_auc=True,
                  debug=False):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
         self.unfreeze_epoch = unfreeze_epoch
+        self.log_auc = log_auc
         self.num_models = 1 if debug == True else 3  # kan nok tage det som flag fra ds?
 
         self.backbones = [timm.create_model(
@@ -59,7 +61,7 @@ class MRKnee(pl.LightningModule):
 
         return {
             'optimizer': optimizer,
-            'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=1e-4, step_size_up=len(self.train_dataloader()), mode="triangular2", cycle_momentum=False),
+            'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=1e-4, step_size_up=len(self.train_dataloader())*2, mode="triangular2", cycle_momentum=False),
             'interval': 'step',
             'frequency': 1,
         }
@@ -88,18 +90,22 @@ class MRKnee(pl.LightningModule):
 
         # logging
         #self.v_sample_loss[sample_id] = loss.item()
-        self.preds.append(torch.sigmoid(logit).squeeze(0))
-        self.lbl.append(label.squeeze(0))
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        if self.log_auc:
+            self.preds.append(torch.sigmoid(logit).squeeze(0))
+            self.lbl.append(label.squeeze(0))
+
         return loss
 
     def on_validation_epoch_start(self):
-        self.preds = []
-        self.lbl = []
+        if self.log_auc:
+            self.preds = []
+            self.lbl = []
 
     def on_validation_epoch_end(self):
-        self.log('val_auc', auroc(torch.cat(self.preds), torch.cat(self.lbl), pos_label=1),
-                 prog_bar=True, on_epoch=True)
+        if self.log_auc:
+            self.log('val_auc', auroc(torch.cat(self.preds), torch.cat(self.lbl), pos_label=1),
+                     prog_bar=True, on_epoch=True)
 
     def unfreeze(self, module, idx):
         for param in module[idx:].parameters():
