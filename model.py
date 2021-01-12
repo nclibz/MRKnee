@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.container import ModuleList, Sequential
-from torch.optim.lr_scheduler import OneCycleLR
+from torch.optim.lr_scheduler import CyclicLR, ExponentialLR, OneCycleLR
 import timm
 
 
@@ -56,7 +56,13 @@ class MRKnee(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.learning_rate)
-        return optimizer
+
+        return {
+            'optimizer': optimizer,
+            'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=1e-4, step_size_up=len(self.train_dataloader()), mode="triangular2", cycle_momentum=False),
+            'interval': 'step',
+            'frequency': 1,
+        }
 
     def training_step(self, batch, batchidx):
         imgs, label, sample_id = batch

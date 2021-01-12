@@ -7,8 +7,8 @@ from data import MRKneeDataModule
 from argparse import ArgumentParser
 
 # %%
-# %load_ext autoreload
-# %autoreload 2
+%load_ext autoreload
+%autoreload 2
 
 
 # %%
@@ -17,7 +17,8 @@ if __name__ == '__main__':
     tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
     checkpoint = pl.callbacks.ModelCheckpoint(
-        monitor="val_auc", save_top_k=2, mode="max")
+        monitor="val_loss", save_top_k=2, mode="max")
+    lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval="step")
 
     DEBUG = True
 
@@ -25,17 +26,19 @@ if __name__ == '__main__':
                           num_workers=2, debug=DEBUG)
     model = MRKnee(backbone='tf_efficientnet_b0_ns', debug=DEBUG, learning_rate=1e-5)
     trainer = pl.Trainer(gpus=1,
-                         fast_dev_run=True,
                          precision=16,
                          max_epochs=1,
-                         limit_train_batches=1,
+                         limit_train_batches=10,
                          limit_val_batches=10,
                          num_sanity_val_steps=0,
                          logger=tb_logger,
-                         callbacks=[checkpoint],
+                         callbacks=[checkpoint, lr_monitor],
                          deterministic=True, profiler="simple"
                          )
     trainer.fit(model, dm)
 
+
+# %%
+model.log()
 
 # %%
