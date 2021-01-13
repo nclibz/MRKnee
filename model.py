@@ -18,7 +18,8 @@ class MRKnee(pl.LightningModule):
                  freeze_from=4,
                  unfreeze_epoch=5,  # -1 for not freezing any layers
                  log_auc=True,
-                 debug=False):
+                 debug=False,
+                 **kwargs):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
@@ -56,12 +57,12 @@ class MRKnee(pl.LightningModule):
         return x
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.learning_rate)
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.learning_rate, weight_decay=0.01)
 
         return {
             'optimizer': optimizer,
-            'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=1e-4, step_size_up=len(self.train_dataloader())*2, mode="triangular2", cycle_momentum=False),
+            'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=self.learning_rate, step_size_up=len(self.train_dataloader())*2, mode="triangular2", cycle_momentum=False),
             'interval': 'step',
             'frequency': 1,
         }
