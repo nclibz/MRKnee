@@ -14,10 +14,14 @@ import timm
 
 class MRKnee(pl.LightningModule):
     def __init__(self, backbone='tf_efficientnet_b0_ns',
+                 pretrained=True,
+                 in_chans=1,
+                 drop_rate=0.0,
                  learning_rate=0.0001,
                  freeze_from=4,
                  unfreeze_epoch=5,  # -1 for not freezing any layers
                  log_auc=True,
+
                  debug=False):
         super().__init__()
         self.learning_rate = learning_rate
@@ -26,8 +30,8 @@ class MRKnee(pl.LightningModule):
         self.log_auc = log_auc
         self.num_models = 1 if debug == True else 3  # kan nok tage det som flag fra ds?
 
-        self.backbones = [timm.create_model(
-            backbone, pretrained=False, num_classes=0, in_chans=1) for i in range(self.num_models)]
+        self.backbones = [timm.create_model(backbone, pretrained=pretrained, num_classes=0,
+                                            in_chans=in_chans, drop_rate=drop_rate, ) for i in range(self.num_models)]
         self.num_features = self.backbones[0].num_features
         # self.backbones = ModuleList(self.backbones)
         # freeze backbones
