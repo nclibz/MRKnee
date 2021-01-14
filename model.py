@@ -21,7 +21,6 @@ class MRKnee(pl.LightningModule):
                  freeze_from=4,
                  unfreeze_epoch=5,  # -1 for not freezing any layers
                  log_auc=True,
-
                  debug=False):
         super().__init__()
         self.learning_rate = learning_rate
@@ -63,7 +62,11 @@ class MRKnee(pl.LightningModule):
         optimizer = torch.optim.AdamW(
             self.parameters(), lr=self.learning_rate, weight_decay=0.01)
 
-        return optimizer
+        return {
+       'optimizer': optimizer,
+       'lr_scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, threshold=0.001),
+       'monitor': 'metric_to_track'
+
 
         # {
         #     'optimizer': optimizer,
@@ -80,7 +83,7 @@ class MRKnee(pl.LightningModule):
 
         # logging
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
-        #self.t_sample_loss[sample_id] = loss.item()
+        # self.t_sample_loss[sample_id] = loss.item()
         return loss
 
     def on_train_epoch_start(self):
@@ -95,7 +98,7 @@ class MRKnee(pl.LightningModule):
             logit, label)
 
         # logging
-        #self.v_sample_loss[sample_id] = loss.item()
+        # self.v_sample_loss[sample_id] = loss.item()
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         if self.log_auc:
             self.preds.append(torch.sigmoid(logit).squeeze(0))
