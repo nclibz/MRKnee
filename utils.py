@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import torchvision
 import numpy as np
+import torch
 
 
 def imshow(inp, title=None, plane_slice=0):
@@ -14,11 +15,22 @@ def imshow(inp, title=None, plane_slice=0):
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
-def calc_norm_data(dataset):
-    for index, data in enumerate(dataset):
-        data = data[0][0]
+def calc_norm_data(dl, plane_int):
+    sum = 0
+    meansq = 0
+    count = 0
+
+    for _, data in enumerate(dl):
+        data = data[0][plane_int]
         mask = data.ne(0.)
         data = data[mask]
-        mean = data.sum()
+        sum += data.sum()
         meansq = meansq + (data**2).sum()
-        count += np.prod(data.shape)
+        count += data.shape[0]
+
+    total_mean = sum/count
+    total_var = (meansq/count) - (total_mean**2)
+    total_std = torch.sqrt(total_var)
+    print("mean: " + str(total_mean))
+    print("std: " + str(total_std))
+    return total_mean, total_std

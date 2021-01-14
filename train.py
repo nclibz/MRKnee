@@ -28,12 +28,11 @@ if __name__ == '__main__':
     trainer = pl.Trainer(gpus=1,
                          precision=16,
                          max_epochs=1,
-                         limit_train_batches=10,
-                         limit_val_batches=10,
+                         limit_val_batches=100,
                          num_sanity_val_steps=0,
                          logger=tb_logger,
                          callbacks=[checkpoint, lr_monitor],
-                         deterministic=True, profiler="simple"
+                         deterministic=True
                          )
     trainer.fit(model, dm)
 

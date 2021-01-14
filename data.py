@@ -11,6 +11,18 @@ MAX_PIXEL_VAL = 255
 MEAN = 58.09
 STD = 49.73
 
+# mine beregninger
+# axial
+#mean: tensor(66.4869)
+#std: tensor(60.8146)
+
+# saggital
+# mean: tensor(60.0440)
+# std: tensor(48.3106)
+# coronal
+# mean: tensor(61.9277)
+# std: tensor(64.2818)
+
 # series = (series - series.min()) / (series.max() - series.min()) * MAX_PIXEL_VAL  # rescaling
 
 # %%
@@ -76,7 +88,7 @@ class MRDS(Dataset):
 # %%
 class MRKneeDataModule(pl.LightningDataModule):
 
-    def __init__(self, datadir, diagnosis, num_workers=0, transf=True, debug=False, upsample=True):
+    def __init__(self, datadir, diagnosis, num_workers=0, transf=True, debug=False, upsample=True, **kwargs):
         super().__init__()
         self.datadir = datadir
         self.diagnosis = diagnosis
@@ -103,10 +115,10 @@ class MRKneeDataModule(pl.LightningDataModule):
     # create datasets
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=1, shuffle=True, num_workers=self.num_workers)
+        return DataLoader(self.train_ds, batch_size=1, shuffle=True, num_workers=self.num_workers, pin_memory=True)
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=self.num_workers)
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, num_workers=self.num_workers, pin_memory=True)
 
 
 # %%

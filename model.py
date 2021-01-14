@@ -18,8 +18,7 @@ class MRKnee(pl.LightningModule):
                  freeze_from=4,
                  unfreeze_epoch=5,  # -1 for not freezing any layers
                  log_auc=True,
-                 debug=False,
-                 **kwargs):
+                 debug=False):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
