@@ -59,12 +59,14 @@ class MRKnee(pl.LightningModule):
         optimizer = torch.optim.AdamW(
             self.parameters(), lr=self.learning_rate, weight_decay=0.01)
 
-        return {
-            'optimizer': optimizer,
-            'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=self.learning_rate, step_size_up=len(self.train_dataloader())*2, mode="triangular2", cycle_momentum=False),
-            'interval': 'step',
-            'frequency': 1,
-        }
+        return optimizer
+
+        # {
+        #     'optimizer': optimizer,
+        #     'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=self.learning_rate, step_size_up=len(self.train_dataloader())*2, mode="triangular2", cycle_momentum=False),
+        #     'interval': 'step',
+        #     'frequency': 1,
+        # }
 
     def training_step(self, batch, batchidx):
         imgs, label, sample_id = batch

@@ -78,6 +78,7 @@ class MRDS(Dataset):
 
         # convert to 3chan
         #imgs = torch.stack((imgs,)*3, axis=1)
+
         # create 1 chan
         imgs = imgs.unsqueeze(1)
 
