@@ -27,13 +27,13 @@ class MRKnee(pl.LightningModule):
         self.num_models = 1 if debug == True else 3  # kan nok tage det som flag fra ds?
 
         self.backbones = [timm.create_model(
-            backbone, pretrained=True, num_classes=0) for i in range(self.num_models)]
+            backbone, pretrained=False, num_classes=0, in_chans=1) for i in range(self.num_models)]
         self.num_features = self.backbones[0].num_features
         # self.backbones = ModuleList(self.backbones)
         # freeze backbones
         self.backbones = ModuleList([self.freeze(module.as_sequential(), freeze_from)
                                      for module in self.backbones])
-        self.bn_layers = ModuleList([nn.BatchNorm2d(3)
+        self.bn_layers = ModuleList([nn.BatchNorm2d(1)
                                      for i in range(self.num_models)])
         # self.clf = Sequential(nn.Linear(self.num_features*self.num_models, 512),
         #                      nn.Linear(512, 1))

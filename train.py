@@ -32,7 +32,8 @@ if __name__ == '__main__':
                          num_sanity_val_steps=0,
                          logger=tb_logger,
                          callbacks=[checkpoint, lr_monitor],
-                         deterministic=True
+                         deterministic=True,
+                         benchmark=False
                          )
     trainer.fit(model, dm)
 
