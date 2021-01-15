@@ -42,9 +42,7 @@ class MRDS(Dataset):
             self.cases = [(row[0], int(row[1]))
                           for row in list(csv.reader(f))]
 
-        if stage == 'valid':
-            upsample = False
-        if upsample:
+        if self.stage == 'train' and upsample:
             neg_cases = [case for case in self.cases if case[1] == 0]
             pos_cases = [case for case in self.cases if case[1] == 1]
             pos_count = len(pos_cases)
