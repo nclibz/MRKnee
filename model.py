@@ -21,32 +21,32 @@ class MRKnee(pl.LightningModule):
                  freeze_from=4,
                  unfreeze_epoch=5,  # -1 for not freezing any layers
                  log_auc=True,
-                 debug=False):
+                 n_planes=1):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
         self.unfreeze_epoch = unfreeze_epoch
         self.log_auc = log_auc
-        self.num_models = 1 if debug == True else 3  # kan nok tage det som flag fra ds?
+        self.n_planes = n_planes
 
         self.backbones = [timm.create_model(backbone, pretrained=pretrained, num_classes=0,
-                                            in_chans=in_chans, drop_rate=drop_rate, ) for i in range(self.num_models)]
+                                            in_chans=in_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
         self.num_features = self.backbones[0].num_features
         # self.backbones = ModuleList(self.backbones)
         # freeze backbones
         self.backbones = ModuleList([self.freeze(module.as_sequential(), freeze_from)
                                      for module in self.backbones])
         self.bn_layers = ModuleList([nn.BatchNorm2d(1)
-                                     for i in range(self.num_models)])
+                                     for i in range(self.n_planes)])
         # self.clf = Sequential(nn.Linear(self.num_features*self.num_models, 512),
         #                      nn.Linear(512, 1))
-        self.clf = nn.Linear(self.num_features*self.num_models, 1)
+        self.clf = nn.Linear(self.num_features*self.n_planes, 1)
         self.t_sample_loss = {}
         self.v_sample_loss = {}
 
     def run_model(self, model, bn, series):
         x = torch.squeeze(series, dim=0)
-        x = bn(x)
+        #x = bn(x)
         x = model(x)
         x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør det?
         return x

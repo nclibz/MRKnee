@@ -3,28 +3,54 @@ import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from model import MRKnee
-from data import MRKneeDataModule
+from data import MRDS
+from torch.utils.data import DataLoader
 from argparse import ArgumentParser
 
 # %%
 %load_ext autoreload
-%autoreload 2
+%autoreload 0
+
+
+NUM_WORKERS = 2
+DIAGNOSIS = "acl"
+DATADIR = 'data'
+TRANSFORMS = True
+N_PLANES = 1
+N_CHANS = 1
+UPSAMPLE = True
 
 
 # %%
 if __name__ == '__main__':
     pl.seed_everything(123)
-    tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
+
+# Callbacks
     checkpoint = pl.callbacks.ModelCheckpoint(
         monitor="val_loss", save_top_k=2, mode="max")
     lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval="step")
+    tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
-    DEBUG = True
+# DATA
+    train_ds = MRDS(DATADIR, 'train', DIAGNOSIS, transforms=TRANSFORMS,
+                    n_planes=N_PLANES, upsample=UPSAMPLE, n_chans=N_CHANS)
 
-    dm = MRKneeDataModule(datadir='data', diagnosis="meniscus",
-                          num_workers=2, debug=DEBUG)
-    model = MRKnee(backbone='tf_efficientnet_b0_ns', debug=DEBUG, learning_rate=1e-5)
+    train_dl = DataLoader(train_ds, batch_size=1, shuffle=True,
+                          num_workers=NUM_WORKERS)
+
+    val_ds = MRDS(DATADIR, 'valid', DIAGNOSIS, transforms=TRANSFORMS,
+                  n_planes=N_PLANES, upsample=UPSAMPLE, n_chans=N_CHANS)
+
+    val_dl = DataLoader(val_ds, batch_size=1, shuffle=False,
+                        num_workers=NUM_WORKERS)
+
+# MODEL
+
+    model = MRKnee(backbone='tf_efficientnet_b0_ns',
+                   n_planes=N_PLANES, learning_rate=1e-5)
+
+# TRAIN
     trainer = pl.Trainer(gpus=1,
                          precision=16,
                          max_epochs=1,
@@ -35,7 +61,7 @@ if __name__ == '__main__':
                          deterministic=True,
                          benchmark=False
                          )
-    trainer.fit(model, dm)
+    trainer.fit(model, train_dl, val_dl)
 
 
 # %%
