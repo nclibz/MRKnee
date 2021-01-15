@@ -146,7 +146,3 @@ class MRKneeDataModule(pl.LightningDataModule):
 
 
 # %%
-ds = MRDS('data', 'train', 'acl')
-# %%
-ds
-# %%
