@@ -9,14 +9,14 @@ from argparse import ArgumentParser
 
 # %%
 %load_ext autoreload
-%autoreload 0
+%autoreload 1
 
 
 NUM_WORKERS = 2
 DIAGNOSIS = "acl"
 DATADIR = 'data'
-TRANSFORMS = True
-N_PLANES = 1
+TRANS = True
+PLANES = ['axial', 'sagittal', 'coronal']
 N_CHANS = 1
 UPSAMPLE = True
 
@@ -33,14 +33,14 @@ if __name__ == '__main__':
     tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
 # DATA
-    train_ds = MRDS(DATADIR, 'train', DIAGNOSIS, transforms=TRANSFORMS,
-                    n_planes=N_PLANES, upsample=UPSAMPLE, n_chans=N_CHANS)
+    train_ds = MRDS(DATADIR, 'train', DIAGNOSIS, trans=TRANS,
+                    planes=PLANES, upsample=UPSAMPLE, n_chans=N_CHANS)
 
     train_dl = DataLoader(train_ds, batch_size=1, shuffle=True,
                           num_workers=NUM_WORKERS)
 
-    val_ds = MRDS(DATADIR, 'valid', DIAGNOSIS, transforms=TRANSFORMS,
-                  n_planes=N_PLANES, upsample=UPSAMPLE, n_chans=N_CHANS)
+    val_ds = MRDS(DATADIR, 'valid', DIAGNOSIS, trans=TRANS,
+                  planes=PLANES, upsample=UPSAMPLE, n_chans=N_CHANS)
 
     val_dl = DataLoader(val_ds, batch_size=1, shuffle=False,
                         num_workers=NUM_WORKERS)
@@ -48,7 +48,7 @@ if __name__ == '__main__':
 # MODEL
 
     model = MRKnee(backbone='tf_efficientnet_b0_ns',
-                   n_planes=N_PLANES, learning_rate=1e-5)
+                   planes=PLANES, learning_rate=1e-5)
 
 # TRAIN
     trainer = pl.Trainer(gpus=1,

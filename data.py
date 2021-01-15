@@ -11,19 +11,6 @@ import csv
 # MEAN = 58.09
 # STD = 49.73
 
-# mine beregninger
-# axial
-# mean: tensor(66.4869)
-# std: tensor(60.8146)
-
-# saggital
-# mean: tensor(60.0440)
-# std: tensor(48.3106)
-# coronal
-# mean: tensor(61.9277)
-# std: tensor(64.2818)
-
-
 # %%
 
 
@@ -31,18 +18,22 @@ class MRDS(Dataset):
     def __init__(self, datadir,
                  stage,
                  diagnosis,
-                 transforms=True,
-                 n_planes=3,
+                 trans=True,
+                 planes=['axial', 'sagittal', 'coronal'],
                  upsample=True,
                  img_sz=240,
                  n_chans=1):
         super().__init__()
         self.stage = stage
         self.datadir = datadir
-        self.n_planes = n_planes
-        self.img_sz = img_sz
+        self.planes = planes
         self.n_chans = n_chans
-        self.transforms = transforms
+        self.trans = trans
+
+        # Define transforms
+        self.crop = transforms.CenterCrop(img_sz)
+        self.train_transforms = transforms.Compose(
+            [transforms.RandomAffine(25, translate=(0.25, 0.25))])
 
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
@@ -66,10 +57,7 @@ class MRDS(Dataset):
         id, label = self.cases[index]
 
         imgs = [self.prep_imgs(id, plane)
-                for plane in ['axial', 'sagittal', 'coronal']]
-
-        if self.n_planes < 3:
-            imgs = imgs[:self.n_planes]
+                for plane in self.planes]
 
         label = torch.as_tensor(label, dtype=torch.float32).unsqueeze(0)
 
@@ -81,20 +69,20 @@ class MRDS(Dataset):
 
         # transforms
 
-        if self.transforms:
+        if self.trans:
             if plane == 'axial':
                 MEAN, SD = 66.4869, 60.8146
             elif plane == 'sagittal':
-                MEAN, SD = 66.4869, 60.8146  # CHANGE!
+                MEAN, SD = 60.0440, 48.3106  # CHANGE!
             elif plane == 'coronal':
-                MEAN, SD = 66.4869, 60.8146
+                MEAN, SD = 61.9277, 64.2818
 
             imgs = (imgs - imgs.min()) / (imgs.max() -
                                           imgs.min()) * 255  # ensure all images are same intensity
             if self.stage == 'train':
-                pass  # imgs = transforms.RandomAffine(25, translate=(0.25, 0.25)),
-            imgs = transforms.Normalize(MEAN, SD)(imgs)
-            imgs = transforms.CenterCrop(self.img_sz)(imgs)
+                pass  # self.train_transforms(imgs)
+            imgs = (imgs - MEAN)/SD
+            imgs = self.crop(imgs)
 
         if self.n_chans == 1:
             imgs = imgs.unsqueeze(1)
