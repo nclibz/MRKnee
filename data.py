@@ -78,7 +78,7 @@ class MRDS(Dataset):
                 MEAN, SD = 61.9277, 64.2818
 
             if self.stage == 'train' and self.augment:
-                self.augmentations(imgs)
+                imgs = self.augmentations(imgs)
             # ensure all images are same intensity
             imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
@@ -137,10 +137,3 @@ class MRKneeDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(self.val_ds, batch_size=1, shuffle=False, **self.kwargs)
-
-
-# %%
-# TESTING
-# md = MRKneeDataModule('data', 'meniscus', upsample=False)
-# len(md.train_ds)
-# %%
