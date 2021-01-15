@@ -15,6 +15,25 @@ def imshow(inp, title=None, plane_slice=0):
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
+'''
+bedre imshow 
+plt.imshow(imgs[1,:,:], cmap='gray', vmin=0, vmax=255) 
+Tager et plane som input og så evt bruge noget af det her
+
+import matplotlib as mpl
+mpl.rcParams['axes.grid'] = False
+mpl.rcParams['image.interpolation'] = 'nearest'
+mpl.rcParams['figure.figsize'] = 15, 25
+
+def show_dataset(dataset, n=6):
+  img = np.vstack((np.hstack((np.asarray(dataset[i][0]) for _ in range(n)))
+                   for i in range(len(dataset))))
+  plt.imshow(img)
+  plt.axis('off')
+
+'''
+
+
 def calc_norm_data(dl, plane_int):
     sum = 0
     meansq = 0

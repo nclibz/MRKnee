@@ -5,6 +5,7 @@ from torchvision import transforms
 import pytorch_lightning as pl
 import numpy as np
 import csv
+import imgaug.augmenters as iaa
 
 
 # MAX_PIXEL_VAL = 255
@@ -33,9 +34,13 @@ class MRDS(Dataset):
         self.augment = augment
 
         # Define transforms
-        self.crop = transforms.CenterCrop(img_sz)
-        self.augmentations = transforms.Compose(
-            [transforms.RandomAffine(25, translate=(0.25, 0.25))])
+        self.crop = iaa.CropToFixedSize(img_sz, img_sz)
+        self.augmentations = iaa.Sequential([
+            iaa.Sometimes(0.5, iaa.Affine(
+                translate_percent={"x": (-0.15, 0.15), "y": (-0.15, 0.15)},
+                rotate=(-20, 20),
+            ))
+        ])
 
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
@@ -65,7 +70,7 @@ class MRDS(Dataset):
 
     def prep_imgs(self, id, plane):
         path = f'{self.datadir}/{self.stage}/{plane}/{id}.npy'
-        imgs = torch.as_tensor(np.load(path), dtype=torch.float32)
+        imgs = np.load(path)
 
         # transforms
 
@@ -76,14 +81,15 @@ class MRDS(Dataset):
                 MEAN, SD = 60.0440, 48.3106  # CHANGE!
             elif plane == 'coronal':
                 MEAN, SD = 61.9277, 64.2818
+            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+            imgs = (imgs - MEAN)/SD
 
             if self.stage == 'train' and self.augment:
-                imgs = self.augmentations(imgs)
+                imgs = self.augmentations(images=imgs, return_batch=False)
             # ensure all images are same intensity
-            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+            imgs = self.crop(images=imgs)
 
-            imgs = (imgs - MEAN)/SD
-            imgs = self.crop(imgs)
+        imgs = torch.as_tensor(imgs, dtype=torch.float32)
 
         if self.n_chans == 1:
             imgs = imgs.unsqueeze(1)
@@ -137,3 +143,10 @@ class MRKneeDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return DataLoader(self.val_ds, batch_size=1, shuffle=False, **self.kwargs)
+
+
+# %%
+ds = MRDS('data', 'train', 'acl')
+# %%
+ds
+# %%
