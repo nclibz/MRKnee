@@ -85,10 +85,10 @@ class MRDS(Dataset):
             if self.stage == 'train' and self.augment:
                 imgs = self.augmentations(images=imgs, return_batch=False)
 
-            imgs = self.crop(images=imgs)
-
             imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
             imgs = (imgs - MEAN)/SD
+
+            imgs = self.crop(images=imgs)
 
         imgs = torch.as_tensor(imgs, dtype=torch.float32)
 
