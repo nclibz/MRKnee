@@ -112,6 +112,7 @@ class MRKneeDataModule(pl.LightningDataModule):
                  n_chans=1, **kwargs):
         super().__init__()
         self.kwargs = kwargs
+
         self.train_ds = MRDS(datadir,
                              'train',
                              diagnosis,
@@ -130,8 +131,6 @@ class MRKneeDataModule(pl.LightningDataModule):
                            img_sz,
                            augment,
                            n_chans)
-
-    # create datasets
 
     def train_dataloader(self):
         return DataLoader(self.train_ds, batch_size=1, shuffle=True, **self.kwargs)
