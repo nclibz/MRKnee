@@ -16,7 +16,7 @@ NUM_WORKERS = 2
 DIAGNOSIS = "acl"
 DATADIR = 'data'
 TRANS = True
-PLANES = ['axial', 'sagittal', 'coronal']
+PLANES = ['axial']
 N_CHANS = 1
 UPSAMPLE = True
 

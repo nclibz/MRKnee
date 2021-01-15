@@ -34,7 +34,7 @@ class MRDS(Dataset):
         self.augment = augment
 
         # Define transforms
-        self.crop = iaa.CropToFixedSize(img_sz, img_sz)
+        self.crop = iaa.CropToFixedSize(img_sz, img_sz, position='center')
         self.augmentations = iaa.Sequential([
             iaa.Sometimes(0.5, iaa.Affine(
                 translate_percent={"x": (-0.15, 0.15), "y": (-0.15, 0.15)},
@@ -81,13 +81,14 @@ class MRDS(Dataset):
                 MEAN, SD = 60.0440, 48.3106  # CHANGE!
             elif plane == 'coronal':
                 MEAN, SD = 61.9277, 64.2818
-            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
-            imgs = (imgs - MEAN)/SD
 
             if self.stage == 'train' and self.augment:
                 imgs = self.augmentations(images=imgs, return_batch=False)
-            # ensure all images are same intensity
+
             imgs = self.crop(images=imgs)
+
+            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+            imgs = (imgs - MEAN)/SD
 
         imgs = torch.as_tensor(imgs, dtype=torch.float32)
 
