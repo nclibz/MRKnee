@@ -22,6 +22,7 @@ class MRDS(Dataset):
                  planes=['axial', 'sagittal', 'coronal'],
                  upsample=True,
                  img_sz=240,
+                 augment=True,
                  n_chans=1):
         super().__init__()
         self.stage = stage
@@ -29,10 +30,11 @@ class MRDS(Dataset):
         self.planes = planes
         self.n_chans = n_chans
         self.trans = trans
+        self.augment = augment
 
         # Define transforms
         self.crop = transforms.CenterCrop(img_sz)
-        self.train_transforms = transforms.Compose(
+        self.augmentations = transforms.Compose(
             [transforms.RandomAffine(25, translate=(0.25, 0.25))])
 
         # get cases
@@ -79,8 +81,8 @@ class MRDS(Dataset):
 
             imgs = (imgs - imgs.min()) / (imgs.max() -
                                           imgs.min()) * 255  # ensure all images are same intensity
-            if self.stage == 'train':
-                pass  # self.train_transforms(imgs)
+            if self.stage == 'train' and self.augment:
+                self.augmentations(imgs)
             imgs = (imgs - MEAN)/SD
             imgs = self.crop(imgs)
 
