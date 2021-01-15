@@ -77,10 +77,11 @@ class MRDS(Dataset):
             elif plane == 'coronal':
                 MEAN, SD = 61.9277, 64.2818
 
-            imgs = (imgs - imgs.min()) / (imgs.max() -
-                                          imgs.min()) * 255  # ensure all images are same intensity
             if self.stage == 'train' and self.augment:
                 self.augmentations(imgs)
+            # ensure all images are same intensity
+            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+
             imgs = (imgs - MEAN)/SD
             imgs = self.crop(imgs)
 
@@ -93,6 +94,50 @@ class MRDS(Dataset):
 
     def __len__(self):
         return len(self.cases)
+
+
+# %%
+
+
+class MRKneeDataModule(pl.LightningDataModule):
+
+    def __init__(self,
+                 datadir,
+                 diagnosis,
+                 trans=True,
+                 planes=['axial', 'sagittal', 'coronal'],
+                 upsample=True,
+                 img_sz=240,
+                 augment=True,
+                 n_chans=1, **kwargs):
+        super().__init__()
+        self.kwargs = kwargs
+        self.train_ds = MRDS(datadir,
+                             'train',
+                             diagnosis,
+                             trans,
+                             planes,
+                             upsample,
+                             img_sz,
+                             augment,
+                             n_chans)
+        self.val_ds = MRDS(datadir,
+                           'valid',
+                           diagnosis,
+                           trans,
+                           planes,
+                           upsample,
+                           img_sz,
+                           augment,
+                           n_chans)
+
+    # create datasets
+
+    def train_dataloader(self):
+        return DataLoader(self.train_ds, batch_size=1, shuffle=True, **self.kwargs)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_ds, batch_size=1, shuffle=False, **self.kwargs)
 
 
 # %%
