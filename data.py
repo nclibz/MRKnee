@@ -14,33 +14,20 @@ import imgaug.augmenters as iaa
 
 # %%
 
-
 class MRDS(Dataset):
     def __init__(self, datadir,
                  stage,
                  diagnosis,
-                 trans=True,
+                 transf=None,
                  planes=['axial', 'sagittal', 'coronal'],
                  upsample=True,
-                 img_sz=240,
-                 augment=True,
                  n_chans=1):
         super().__init__()
         self.stage = stage
         self.datadir = datadir
         self.planes = planes
         self.n_chans = n_chans
-        self.trans = trans
-        self.augment = augment
-
-        # Define transforms
-        self.crop = iaa.CropToFixedSize(img_sz, img_sz, position='center')
-        self.augmentations = iaa.Sequential([
-            iaa.Sometimes(0.5, iaa.Affine(
-                translate_percent={"x": (-0.15, 0.15), "y": (-0.15, 0.15)},
-                rotate=(-20, 20),
-            ))
-        ])
+        self.transf = transf
 
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
@@ -74,23 +61,25 @@ class MRDS(Dataset):
 
         # transforms
 
-        if self.trans:
+        if self.transf:
+
+            if self.stage == 'train':
+                imgs = self.transf['train'](images=imgs)
+            if self.stage == 'valid':
+                imgs = self.transf['valid'](images=imgs)
+
+            imgs = torch.as_tensor(imgs, dtype=torch.float32)
+            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+
+            # normalize
             if plane == 'axial':
                 MEAN, SD = 66.4869, 60.8146
             elif plane == 'sagittal':
-                MEAN, SD = 60.0440, 48.3106  # CHANGE!
+                MEAN, SD = 60.0440, 48.3106
             elif plane == 'coronal':
                 MEAN, SD = 61.9277, 64.2818
 
-            if self.stage == 'train' and self.augment:
-                imgs = self.augmentations(images=imgs, return_batch=False)
-
-            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
             imgs = (imgs - MEAN)/SD
-
-            imgs = self.crop(images=imgs)
-
-        imgs = torch.as_tensor(imgs, dtype=torch.float32)
 
         if self.n_chans == 1:
             imgs = imgs.unsqueeze(1)
@@ -114,8 +103,6 @@ class MRKneeDataModule(pl.LightningDataModule):
                  trans=True,
                  planes=['axial', 'sagittal', 'coronal'],
                  upsample=True,
-                 img_sz=240,
-                 augment=True,
                  n_chans=1, **kwargs):
         super().__init__()
         self.kwargs = kwargs
@@ -126,8 +113,6 @@ class MRKneeDataModule(pl.LightningDataModule):
                              trans,
                              planes,
                              upsample,
-                             img_sz,
-                             augment,
                              n_chans)
         self.val_ds = MRDS(datadir,
                            'valid',
@@ -135,8 +120,6 @@ class MRKneeDataModule(pl.LightningDataModule):
                            trans,
                            planes,
                            upsample,
-                           img_sz,
-                           augment,
                            n_chans)
 
     def train_dataloader(self):
