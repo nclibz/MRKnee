@@ -7,12 +7,8 @@ import numpy as np
 import csv
 import imgaug.augmenters as iaa
 
-
-# MAX_PIXEL_VAL = 255
-# MEAN = 58.09
-# STD = 49.73
-
 # %%
+
 
 class MRDS(Dataset):
     def __init__(self, datadir,
@@ -89,7 +85,6 @@ class MRDS(Dataset):
 
 
 # %%
-
 
 class MRKneeDataModule(pl.LightningDataModule):
 

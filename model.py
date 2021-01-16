@@ -20,40 +20,37 @@ class MRKnee(pl.LightningModule):
                  learning_rate=0.0001,
                  freeze_from=4,
                  unfreeze_epoch=5,  # -1 for not freezing any layers
+                 planes=['axial', 'sagittal', 'coronal'],
                  log_auc=True,
-                 planes=['axial', 'sagittal', 'coronal']):
+                 log_ind_loss=False):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
         self.unfreeze_epoch = unfreeze_epoch
         self.log_auc = log_auc
+        self.log_ind_loss = log_ind_loss
         self.n_planes = len(planes)
 
         self.backbones = [timm.create_model(backbone, pretrained=pretrained, num_classes=0,
                                             in_chans=n_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
         self.num_features = self.backbones[0].num_features
-        # self.backbones = ModuleList(self.backbones)
+
         # freeze backbones
         self.backbones = ModuleList([self.freeze(module.as_sequential(), freeze_from)
                                      for module in self.backbones])
-        self.bn_layers = ModuleList([nn.BatchNorm2d(1)
-                                     for i in range(self.n_planes)])
-        # self.clf = Sequential(nn.Linear(self.num_features*self.num_models, 512),
-        #                      nn.Linear(512, 1))
         self.clf = nn.Linear(self.num_features*self.n_planes, 1)
         self.t_sample_loss = {}
         self.v_sample_loss = {}
 
-    def run_model(self, model, bn, series):
+    def run_model(self, model, series):
         x = torch.squeeze(series, dim=0)
-        #x = bn(x)
         x = model(x)
         x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør det?
         return x
 
     def forward(self, x):
-        x = [self.run_model(model, bn, series)
-             for model, bn, series in zip(self.backbones, self.bn_layers, x)]
+        x = [self.run_model(model, series)
+             for model, series in zip(self.backbones, x)]
         x = torch.cat(x, 1)
         x = self.clf(x)
         return x
@@ -82,7 +79,8 @@ class MRKnee(pl.LightningModule):
 
         # logging
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
-        # self.t_sample_loss[sample_id] = loss.item()
+        if self.log_ind_loss:
+            self.t_sample_loss[sample_id] = loss.detach()
         return loss
 
     def on_train_epoch_start(self):
@@ -97,12 +95,13 @@ class MRKnee(pl.LightningModule):
             logit, label)
 
         # logging
-        # self.v_sample_loss[sample_id] = loss.item()
+
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        if self.log_ind_loss:
+            self.v_sample_loss[sample_id] = loss.detach()
         if self.log_auc:
             self.preds.append(torch.sigmoid(logit).squeeze(0))
             self.lbl.append(label.squeeze(0))
-
         return loss
 
     def on_validation_epoch_start(self):
