@@ -62,24 +62,20 @@ class MRDS(Dataset):
         # transforms
 
         if self.transf:
+            imgs = self.transf[self.stage](images=imgs)
 
-            if self.stage == 'train':
-                imgs = self.transf['train'](images=imgs)
-            if self.stage == 'valid':
-                imgs = self.transf['valid'](images=imgs)
+        imgs = torch.as_tensor(imgs, dtype=torch.float32)
+        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
-            imgs = torch.as_tensor(imgs, dtype=torch.float32)
-            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+        # normalize
+        if plane == 'axial':
+            MEAN, SD = 66.4869, 60.8146
+        elif plane == 'sagittal':
+            MEAN, SD = 60.0440, 48.3106
+        elif plane == 'coronal':
+            MEAN, SD = 61.9277, 64.2818
 
-            # normalize
-            if plane == 'axial':
-                MEAN, SD = 66.4869, 60.8146
-            elif plane == 'sagittal':
-                MEAN, SD = 60.0440, 48.3106
-            elif plane == 'coronal':
-                MEAN, SD = 61.9277, 64.2818
-
-            imgs = (imgs - MEAN)/SD
+        imgs = (imgs - MEAN)/SD
 
         if self.n_chans == 1:
             imgs = imgs.unsqueeze(1)
@@ -100,7 +96,7 @@ class MRKneeDataModule(pl.LightningDataModule):
     def __init__(self,
                  datadir,
                  diagnosis,
-                 trans=True,
+                 transf=None,
                  planes=['axial', 'sagittal', 'coronal'],
                  upsample=True,
                  n_chans=1, **kwargs):
@@ -110,14 +106,14 @@ class MRKneeDataModule(pl.LightningDataModule):
         self.train_ds = MRDS(datadir,
                              'train',
                              diagnosis,
-                             trans,
+                             transf,
                              planes,
                              upsample,
                              n_chans)
         self.val_ds = MRDS(datadir,
                            'valid',
                            diagnosis,
-                           trans,
+                           transf,
                            planes,
                            upsample,
                            n_chans)

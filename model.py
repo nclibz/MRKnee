@@ -15,7 +15,7 @@ import timm
 class MRKnee(pl.LightningModule):
     def __init__(self, backbone='tf_efficientnet_b0_ns',
                  pretrained=True,
-                 in_chans=1,
+                 n_chans=1,
                  drop_rate=0.0,
                  learning_rate=0.0001,
                  freeze_from=4,
@@ -30,7 +30,7 @@ class MRKnee(pl.LightningModule):
         self.n_planes = len(planes)
 
         self.backbones = [timm.create_model(backbone, pretrained=pretrained, num_classes=0,
-                                            in_chans=in_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
+                                            in_chans=n_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
         self.num_features = self.backbones[0].num_features
         # self.backbones = ModuleList(self.backbones)
         # freeze backbones
