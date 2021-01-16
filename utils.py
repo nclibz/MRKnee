@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
-import torchvision
 import numpy as np
 import torch
+import heapq
 
 
 def show_batch(img_tens):
@@ -36,3 +36,10 @@ def calc_norm_data(dl, plane_int):
     print("mean: " + str(total_mean))
     print("std: " + str(total_std))
     return total_mean, total_std
+
+
+def print_top_losses(loss_dict, n):
+    k_high = heapq.nlargest(2, loss_dict, key=loss_dict.get)
+    print("Sample : Loss")
+    for k in k_high:
+        print(k, " : ", loss_dict.get(k))
