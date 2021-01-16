@@ -39,7 +39,7 @@ def calc_norm_data(dl, plane_int):
 
 
 def print_top_losses(loss_dict, n):
-    k_high = heapq.nlargest(2, loss_dict, key=loss_dict.get)
+    k_high = heapq.nlargest(n, loss_dict, key=loss_dict.get)
     print("Sample : Loss")
     for k in k_high:
         print(k, " : ", loss_dict.get(k))
