@@ -78,7 +78,7 @@ class MRKnee(pl.LightningModule):
             logit, label)
 
         # logging
-        self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('loss/train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         if self.log_ind_loss:
             self.t_sample_loss[sample_id] = loss.detach()
         return loss
@@ -96,7 +96,7 @@ class MRKnee(pl.LightningModule):
 
         # logging
 
-        self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('loss/val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         if self.log_ind_loss:
             self.v_sample_loss[sample_id] = loss.detach()
         if self.log_auc:
