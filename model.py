@@ -62,7 +62,7 @@ class MRKnee(pl.LightningModule):
         return {
             'optimizer': optimizer,
             'lr_scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, threshold=0.001),
-            'monitor': 'val_loss'}
+            'monitor': 'loss/val_loss'}
 
         # {
         #     'optimizer': optimizer,
