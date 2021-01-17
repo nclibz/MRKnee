@@ -43,3 +43,20 @@ def print_top_losses(loss_dict, n):
     print("Sample : Loss")
     for k in k_high:
         print(k, " : ", loss_dict.get(k))
+
+
+def do_aug(imgs, transf):
+    img_dict = {}
+    target_dict = {}
+    for i in range(imgs.shape[0]):
+        if i == 0:
+            img_dict['image'] = imgs[i, :, :]
+        else:
+            img_name = 'image'+f'{i}'
+            img_dict[img_name] = imgs[i, :, :]
+            target_dict[img_name] = 'image'
+
+    transf.add_targets(target_dict)
+    out = transf(**img_dict)
+    out = list(out.values())
+    return out  # returns list of np arrays

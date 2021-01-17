@@ -1,12 +1,10 @@
 # %%
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
 import pytorch_lightning as pl
 import numpy as np
 import csv
-import imgaug.augmenters as iaa
-
+from utils import do_aug
 # %%
 
 
@@ -58,7 +56,7 @@ class MRDS(Dataset):
         # transforms
 
         if self.transf:
-            imgs = self.transf[self.stage](images=imgs)
+            imgs = do_aug(imgs, self.transf[self.stage])
 
         imgs = torch.as_tensor(imgs, dtype=torch.float32)
         imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
