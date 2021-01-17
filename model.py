@@ -22,7 +22,8 @@ class MRKnee(pl.LightningModule):
                  unfreeze_epoch=5,  # -1 for not freezing any layers
                  planes=['axial', 'sagittal', 'coronal'],
                  log_auc=True,
-                 log_ind_loss=False):
+                 log_ind_loss=False,
+                 log_data_args={}):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
@@ -30,6 +31,18 @@ class MRKnee(pl.LightningModule):
         self.log_auc = log_auc
         self.log_ind_loss = log_ind_loss
         self.n_planes = len(planes)
+
+        self.save_hyperparameters(
+            "backbone",
+            "pretrained",
+            "n_chans",
+            "drop_rate",
+            "learning_rate",
+            "freeze_from",
+            "unfreeze_epoch"
+        )
+
+        self.hparams = {**self.hparams, **log_data_args}
 
         self.backbones = [timm.create_model(backbone, pretrained=pretrained, num_classes=0,
                                             in_chans=n_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
@@ -123,5 +136,6 @@ class MRKnee(pl.LightningModule):
         for param in module[idx:].parameters():
             param.requires_grad = False
         return module
+
 
 # %%

@@ -6,24 +6,43 @@ from model import MRKnee
 from data import MRKneeDataModule
 from torch.utils.data import DataLoader
 from argparse import ArgumentParser
+import albumentations as A
+
 
 # %%
 %load_ext autoreload
-%autoreload 1
+%autoreload 2
+# %%
+
+
+IMG_SZ = 240
+PLANES = ['axial']  # , 'sagittal', 'coronal'
+N_CHANS = 1
 
 data_args = {
-    datadir = 'data',
-    diagnosis = "acl",
-    planes = ['axial'],  # , 'sagittal', 'coronal'
-    n_chans = 1,
-
-    IMG_SZ = 240
-    CHANS = 1
-
+    'datadir': 'data',
+    'diagnosis': "acl",
+    'planes': PLANES,
+    'n_chans': N_CHANS,
+    'num_workers': 2,
+    'transf': {
+        'train': A.Compose([A.CenterCrop(IMG_SZ, IMG_SZ)]),
+        'valid': A.Compose([A.CenterCrop(IMG_SZ, IMG_SZ)])
+    }
 }
 
-model_args =
-BACKBONE = 'efficientnet_b1'
+model_args = {
+    'backbone': 'efficientnet_b1',
+    'pretrained': True,
+    'learning_rate': 1e-3,
+    'drop_rate': 0.5,
+    'freeze_from': -1,
+    'unfreeze_epoch': 0,
+    'planes': PLANES,
+    'n_chans': N_CHANS,
+    'log_auc': True,
+    'log_ind_loss': True
+}
 
 
 AUGMENT = {
@@ -35,29 +54,16 @@ AUGMENT = {
 # %%
 pl.seed_everything(123)
 
-dm = MRKneeDataModule(DATADIR,
-                      DIAGNOSIS,
-                      planes=PLANES,
-                      num_workers=2,
-                      n_chans=CHANS,
-                      transf=AUGMENT)
+dm = MRKneeDataModule(**data_args)
+model = MRKnee(**model_args, log_data_args=data_args)
 
 # Callbacks
 checkpoint = pl.callbacks.ModelCheckpoint(
-    monitor="val_loss", save_top_k=2, mode="max")
+    monitor="loss/val_loss", save_top_k=2, mode="min")
 lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval="step")
 tb_logger = pl_loggers.TensorBoardLogger('logs/')
 
 # MODEL
-model = MRKnee(backbone=BACKBONE,
-               pretrained=True,
-               drop_rate=0.5,
-               learning_rate=1e-3,
-               unfreeze_epoch=0,
-               freeze_from=-1,
-               planes=PLANES,
-               n_chans=CHANS,
-               log_ind_loss=True)
 
 # TRAINER
 trainer = pl.Trainer(gpus=1,
@@ -75,5 +81,5 @@ trainer = pl.Trainer(gpus=1,
 
 
 # %%
-
+trainer.fit(model, dm)
 # %%

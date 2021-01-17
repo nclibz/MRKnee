@@ -22,6 +22,8 @@ class MRDS(Dataset):
         self.planes = planes
         self.n_chans = n_chans
         self.transf = transf
+        self.upsampe = upsample
+        self.diagnosis = diagnosis
 
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
