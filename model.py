@@ -32,18 +32,6 @@ class MRKnee(pl.LightningModule):
         self.log_ind_loss = log_ind_loss
         self.n_planes = len(planes)
 
-        self.save_hyperparameters(
-            "backbone",
-            "pretrained",
-            "n_chans",
-            "drop_rate",
-            "learning_rate",
-            "freeze_from",
-            "unfreeze_epoch"
-        )
-
-        self.hparams = {**self.hparams, **log_data_args}
-
         self.backbones = [timm.create_model(backbone, pretrained=pretrained, num_classes=0,
                                             in_chans=n_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
         self.num_features = self.backbones[0].num_features
@@ -75,7 +63,7 @@ class MRKnee(pl.LightningModule):
         return {
             'optimizer': optimizer,
             'lr_scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, threshold=0.001),
-            'monitor': 'loss/val_loss'}
+            'monitor': 'val_loss'}
 
         # {
         #     'optimizer': optimizer,
@@ -91,7 +79,7 @@ class MRKnee(pl.LightningModule):
             logit, label)
 
         # logging
-        self.log('loss/train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         if self.log_ind_loss:
             self.t_sample_loss[sample_id] = loss.detach()
         return loss
@@ -109,7 +97,7 @@ class MRKnee(pl.LightningModule):
 
         # logging
 
-        self.log('loss/val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         if self.log_ind_loss:
             self.v_sample_loss[sample_id] = loss.detach()
         if self.log_auc:
