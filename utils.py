@@ -4,6 +4,8 @@ import torch
 import heapq
 import pandas as pd
 from ipywidgets import interact, Dropdown, IntSlider
+from io import BytesIO
+import pickle
 
 
 def show_batch(img_tens):
@@ -64,7 +66,15 @@ def do_aug(imgs, transf):
     return out  # returns list of np arrays
 
 
+def export_pickle(obj):
+    buffer = BytesIO()
+    pickle.dump(obj, buffer)
+    buffer.seek(0)
+
+    return buffer
+
 ################# KNEEPLOT ###############
+
 
 def load_one_stack(case, data_path=None, plane='coronal'):
     fpath = '{}/{}/{}.npy'.format(data_path, plane, case)

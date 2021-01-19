@@ -8,10 +8,10 @@ import torch.nn.functional as F
 from torch.nn.modules.container import ModuleList, Sequential
 from torch.optim.lr_scheduler import CyclicLR, ExponentialLR, OneCycleLR
 import timm
-from neptunecontrib.api import log_pickle
-
+from utils import export_pickle
 
 # %%
+
 
 class MRKnee(pl.LightningModule):
     def __init__(self, backbone='tf_efficientnet_b0_ns',
@@ -106,10 +106,10 @@ class MRKnee(pl.LightningModule):
             self.lbl.append(label.squeeze(0))
 
         if loss < self.best_val_loss:
-            log_pickle('v_sample_loss.pkl', self.v_sample_loss,
-                       experiment=self.trainer.logger)
-            log_pickle('t_sample_loss.pkl', self.t_sample_loss,
-                       experiment=self.trainer.logger)
+            self.trainer.logger.log_artifact(export_pickle(
+                self.t_sample_loss), "t_sample_loss.pkl")
+            self.trainer.logger.log_artifact(export_pickle(
+                self.v_sample_loss), "v_sample_loss.pkl")
             self.best_val_loss = loss
         return loss
 

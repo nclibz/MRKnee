@@ -4,6 +4,7 @@ data/
 logs/
 testing.py
 todo
+error_analysis.txt
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,jupyternotebooks,vscode
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,python,jupyternotebooks,vscode
