@@ -22,8 +22,7 @@ class MRKnee(pl.LightningModule):
                  unfreeze_epoch=5,  # -1 for not freezing any layers
                  planes=['axial', 'sagittal', 'coronal'],
                  log_auc=True,
-                 log_ind_loss=False,
-                 log_data_args={}):
+                 log_ind_loss=False):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
@@ -62,7 +61,7 @@ class MRKnee(pl.LightningModule):
 
         return {
             'optimizer': optimizer,
-            'lr_scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, threshold=0.001),
+            'lr_scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, threshold=1e-4),
             'monitor': 'val_loss'}
 
         # {
@@ -73,10 +72,10 @@ class MRKnee(pl.LightningModule):
         # }
 
     def training_step(self, batch, batchidx):
-        imgs, label, sample_id = batch
+        imgs, label, sample_id, weight = batch
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(
-            logit, label)
+            logit, label, pos_weight=weight)
 
         # logging
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)

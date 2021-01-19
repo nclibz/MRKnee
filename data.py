@@ -4,6 +4,8 @@ from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
 import numpy as np
 import csv
+
+from torch.utils.data.sampler import WeightedRandomSampler
 from utils import do_aug
 # %%
 
@@ -14,31 +16,30 @@ class MRDS(Dataset):
                  diagnosis,
                  transf=None,
                  planes=['axial', 'sagittal', 'coronal'],
-                 upsample=True,
-                 n_chans=1):
+                 n_chans=1,
+                 indp_normalz=True,
+                 w_loss=True,):
         super().__init__()
         self.stage = stage
         self.datadir = datadir
         self.planes = planes
         self.n_chans = n_chans
         self.transf = transf
-        self.upsampe = upsample
         self.diagnosis = diagnosis
+        self.indp_normalz = indp_normalz
+        self.w_loss = w_loss
 
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
             self.cases = [(row[0], int(row[1]))
                           for row in list(csv.reader(f))]
 
-        if self.stage == 'train' and upsample:
-            neg_cases = [case for case in self.cases if case[1] == 0]
-            pos_cases = [case for case in self.cases if case[1] == 1]
-            pos_count = len(pos_cases)
-            neg_count = len(neg_cases)
-            w = round(
-                neg_count/pos_count) if pos_count < neg_count else round(pos_count/neg_count)
-            self.cases = (neg_cases * int(w)) + \
-                pos_cases if neg_count < pos_count else (pos_cases*int(w))+neg_cases
+        if w_loss:
+            lbls = [lbl for _, lbl in self.cases]
+            pos_count = np.sum(lbls)
+            neg_count = len(lbls) - pos_count
+            self.weight = torch.as_tensor(
+                neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
 
     def __getitem__(self, index):
 
@@ -49,7 +50,7 @@ class MRDS(Dataset):
 
         label = torch.as_tensor(label, dtype=torch.float32).unsqueeze(0)
 
-        return imgs, label, id
+        return imgs, label, id, self.weight
 
     def prep_imgs(self, id, plane):
         path = f'{self.datadir}/{self.stage}/{plane}/{id}.npy'
@@ -64,12 +65,15 @@ class MRDS(Dataset):
         imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
         # normalize
-        if plane == 'axial':
-            MEAN, SD = 66.4869, 60.8146
-        elif plane == 'sagittal':
-            MEAN, SD = 60.0440, 48.3106
-        elif plane == 'coronal':
-            MEAN, SD = 61.9277, 64.2818
+        if self.indp_normalz:
+            if plane == 'axial':
+                MEAN, SD = 66.4869, 60.8146
+            elif plane == 'sagittal':
+                MEAN, SD = 60.0440, 48.3106
+            elif plane == 'coronal':
+                MEAN, SD = 61.9277, 64.2818
+        else:
+            MEAN, SD = 58.09, 49.73
 
         imgs = (imgs - MEAN)/SD
 
@@ -93,28 +97,47 @@ class MRKneeDataModule(pl.LightningDataModule):
                  diagnosis,
                  transf=None,
                  planes=['axial', 'sagittal', 'coronal'],
-                 upsample=True,
-                 n_chans=1, **kwargs):
+                 upsample=False,
+                 n_chans=1,
+                 w_loss=True,
+                 ** kwargs):
         super().__init__()
         self.kwargs = kwargs
+        self.upsample = upsample
+        self.w_loss = w_loss
+
+        assert(self.upsample != self.w_loss)
 
         self.train_ds = MRDS(datadir,
                              'train',
                              diagnosis,
                              transf,
                              planes,
-                             upsample,
-                             n_chans)
+                             n_chans,
+                             w_loss=w_loss)
         self.val_ds = MRDS(datadir,
                            'valid',
                            diagnosis,
                            transf,
                            planes,
-                           upsample,
-                           n_chans)
+                           n_chans,
+                           w_loss=w_loss)
+        if self.upsample:
+            lbls = [lbl for _, lbl in self.train_ds.cases]
+            class_counts = np.bincount(lbls)
+            class_weights = 1 / torch.Tensor(class_counts)
+            samples_weight = [class_weights[t] for t in lbls]
+            self.sampler = WeightedRandomSampler(samples_weight, 1)
 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=1, shuffle=True, **self.kwargs)
+        if self.upsample:
+            trainloader = DataLoader(self.train_ds, batch_size=1,
+                                     sampler=self.sampler, **self.kwargs)
+        else:
+            trainloader = DataLoader(self.train_ds, batch_size=1,
+                                     shuffle=True, **self.kwargs)
+
+        return trainloader
 
     def val_dataloader(self):
         return DataLoader(self.val_ds, batch_size=1, shuffle=False, **self.kwargs)

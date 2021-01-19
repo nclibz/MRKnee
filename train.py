@@ -4,8 +4,6 @@ from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from model import MRKnee
 from data import MRKneeDataModule
-from torch.utils.data import DataLoader
-from argparse import ArgumentParser
 import albumentations as A
 
 
