@@ -31,7 +31,6 @@ class MRKnee(pl.LightningModule):
         self.log_auc = log_auc
         self.log_ind_loss = log_ind_loss
         self.n_planes = len(planes)
-
         self.backbones = [timm.create_model(backbone, pretrained=pretrained, num_classes=0,
                                             in_chans=n_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
         self.num_features = self.backbones[0].num_features
@@ -40,8 +39,10 @@ class MRKnee(pl.LightningModule):
         self.backbones = ModuleList([self.freeze(module.as_sequential(), freeze_from)
                                      for module in self.backbones])
         self.clf = nn.Linear(self.num_features*self.n_planes, 1)
+        # logging
         self.t_sample_loss = {}
         self.v_sample_loss = {}
+        self.best_val_loss = 20
 
     def run_model(self, model, series):
         x = torch.squeeze(series, dim=0)
