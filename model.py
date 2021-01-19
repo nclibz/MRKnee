@@ -89,10 +89,10 @@ class MRKnee(pl.LightningModule):
                                          for module in self.backbones])
 
     def validation_step(self, batch, batchidx):
-        imgs, label, sample_id = batch
+        imgs, label, sample_id, weight = batch
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(
-            logit, label)
+            logit, label, pos_weight=weight)
 
         # logging
 
