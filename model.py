@@ -106,8 +106,10 @@ class MRKnee(pl.LightningModule):
             self.lbl.append(label.squeeze(0))
 
         if loss < self.best_val_loss:
-            log_pickle('v_sample_loss.pkl', self.v_sample_loss)
-            log_pickle('t_sample_loss.pkl', self.t_sample_loss)
+            log_pickle('v_sample_loss.pkl', self.v_sample_loss,
+                       experiment=self.trainer.logger)
+            log_pickle('t_sample_loss.pkl', self.t_sample_loss,
+                       experiment=self.trainer.logger)
             self.best_val_loss = loss
         return loss
 
