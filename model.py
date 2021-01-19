@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.nn.modules.container import ModuleList, Sequential
 from torch.optim.lr_scheduler import CyclicLR, ExponentialLR, OneCycleLR
 import timm
+from neptunecontrib.api import log_pickle
 
 
 # %%
@@ -80,7 +81,7 @@ class MRKnee(pl.LightningModule):
         # logging
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         if self.log_ind_loss:
-            self.t_sample_loss[sample_id] = loss.detach()
+            self.t_sample_loss[sample_id] = (loss.detach(), label)
         return loss
 
     def on_train_epoch_start(self):
@@ -98,10 +99,15 @@ class MRKnee(pl.LightningModule):
 
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         if self.log_ind_loss:
-            self.v_sample_loss[sample_id] = loss.detach()
+            self.v_sample_loss[sample_id] = loss
         if self.log_auc:
             self.preds.append(torch.sigmoid(logit).squeeze(0))
             self.lbl.append(label.squeeze(0))
+
+        if loss < self.best_val_loss:
+            log_pickle('v_sample_loss.pkl', self.v_sample_loss)
+            log_pickle('t_sample_loss.pkl', self.t_sample_loss)
+            self.best_val_loss = loss
         return loss
 
     def on_validation_epoch_start(self):
