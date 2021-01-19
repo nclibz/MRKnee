@@ -100,6 +100,7 @@ class MRKneeDataModule(pl.LightningDataModule):
                  upsample=False,
                  n_chans=1,
                  w_loss=True,
+                 indp_normalz=True,
                  ** kwargs):
         super().__init__()
         self.kwargs = kwargs
@@ -114,14 +115,16 @@ class MRKneeDataModule(pl.LightningDataModule):
                              transf,
                              planes,
                              n_chans,
-                             w_loss=w_loss)
+                             w_loss=w_loss,
+                             indp_normalz=True)
         self.val_ds = MRDS(datadir,
                            'valid',
                            diagnosis,
                            transf,
                            planes,
                            n_chans,
-                           w_loss=w_loss)
+                           w_loss=w_loss,
+                           indp_normalz=True)
         if self.upsample:
             lbls = [lbl for _, lbl in self.train_ds.cases]
             class_counts = np.bincount(lbls)
