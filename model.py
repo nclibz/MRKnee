@@ -35,7 +35,7 @@ class MRKnee(pl.LightningModule):
         self.num_features = self.backbones[0].num_features
 
         # freeze backbones
-        self.backbones = ModuleList([self.freeze(module.as_sequential(), freeze_from)
+        self.backbones = ModuleList([self._freeze(module.as_sequential(), freeze_from)
                                      for module in self.backbones])
         self.clf = nn.Linear(self.num_features*self.n_planes, 1)
         # logging
@@ -86,7 +86,7 @@ class MRKnee(pl.LightningModule):
 
     def on_train_epoch_start(self):
         if self.current_epoch == self.unfreeze_epoch:
-            self.backbones = ModuleList([self.unfreeze(module, self.freeze_from)
+            self.backbones = ModuleList([self._unfreeze(module, self.freeze_from)
                                          for module in self.backbones])
 
     def validation_step(self, batch, batchidx):
@@ -124,12 +124,12 @@ class MRKnee(pl.LightningModule):
             self.log('val_auc', auroc(torch.cat(self.preds), torch.cat(self.lbl), pos_label=1),
                      prog_bar=True, on_epoch=True)
 
-    def unfreeze(self, module, idx):
+    def _unfreeze(self, module, idx):
         for param in module[idx:].parameters():
             param.requires_grad = True
         return module
 
-    def freeze(self, module, idx):
+    def _freeze(self, module, idx):
         for param in module[idx:].parameters():
             param.requires_grad = False
         return module

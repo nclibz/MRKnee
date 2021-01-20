@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
-import numpy as np
-import torch
 import heapq
 import pandas as pd
 from ipywidgets import interact, Dropdown, IntSlider
-from io import BytesIO
-import pickle
+import torch
+import numpy as np
+from torch.utils.data.dataloader import DataLoader
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import roc_auc_score
 
 
 def show_batch(img_tens):
@@ -64,6 +65,58 @@ def do_aug(imgs, transf):
     out = transf(**img_dict)
     out = list(out.values())
     return out  # returns list of np arrays
+
+
+def get_preds(datadir,
+              diagnosis,
+              stage='train',
+              planes=['axial', 'sagittal', 'coronal'],
+              ckpt_dir='models/',
+              backbones=['efficientnet_b0', 'efficientnet_b0', 'efficientnet_b0']):
+    from data import MRKneeDataModule  # to prevent circular imports
+    from model import MRKnee
+    model_ckpts = [f'{ckpt_dir}{diagnosis}_{plane}.ckpt' for plane in planes]
+    preds_dict = {}
+
+    for plane, model_ckpt, backbone in zip(planes, model_ckpts, backbones):
+        # model setup
+        model = MRKnee.load_from_checkpoint(
+            model_ckpt, planes=[plane], backbone=backbone)
+        model.freeze()
+        model.to(device=torch.device('cuda'))
+
+        # data setup
+        dm = MRKneeDataModule(datadir, diagnosis, planes=[plane],
+                              indp_normalz=False,)
+        if stage == 'train':
+            dl = DataLoader(dm.train_ds, batch_size=1, shuffle=False)
+        elif stage == 'valid':
+            dl = DataLoader(dm.val_ds, batch_size=1, shuffle=False)
+
+        # gather preds
+        preds_list = []
+        lbl_list = []
+        for i, batch in enumerate(dl):
+            imgs, label, sample_id, weight = batch
+            imgs = imgs[0].to(device=torch.device('cuda'))
+            preds = model(imgs)
+            preds = torch.sigmoid(preds)
+            preds_list.append(preds.item())
+            lbl_list.append(label.item())
+
+        preds_dict[plane] = preds_list
+        preds_dict['lbls'] = lbl_list
+    return pd.DataFrame(preds_dict)
+
+
+def compare_clfs(clfs, X, y, X_val, y_val):
+    for name, clf in clfs.items():
+        clf.fit(X, y)
+        cv_score = np.mean(cross_val_score(clf, X, y))
+        preds = clf.predict(X_val)
+        auc = roc_auc_score(y_val, preds)
+        print(f'{name}: CV_SCORE: {cv_score:.4f} VAL_AUC: {auc:.4f}')
+
 
 ################# KNEEPLOT ###############
 
