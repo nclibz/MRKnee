@@ -5,10 +5,9 @@ from pytorch_lightning.metrics.functional.classification import auroc
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.modules.container import ModuleList, Sequential
-from torch.optim.lr_scheduler import CyclicLR, ExponentialLR, OneCycleLR
+from torch.nn.modules.container import ModuleList
+
 import timm
-from utils import export_pickle
 
 # %%
 
@@ -104,14 +103,16 @@ class MRKnee(pl.LightningModule):
         if self.log_auc:
             self.preds.append(torch.sigmoid(logit).squeeze(0))
             self.lbl.append(label.squeeze(0))
-
-        if loss < self.best_val_loss:
-            self.trainer.logger.log_artifact(export_pickle(
-                self.t_sample_loss), "t_sample_loss.pkl")
-            self.trainer.logger.log_artifact(export_pickle(
-                self.v_sample_loss), "v_sample_loss.pkl")
-            self.best_val_loss = loss
         return loss
+
+# log sample losses til neptune VIRKER IKKE LIGE NU - det er under validation step. Skal bruge mean loss
+# kan bare bruge den fra neptune-contrib
+#         if loss < self.best_val_loss:
+#             self.trainer.logger.log_artifact(export_pickle(
+#                 self.t_sample_loss), "t_sample_loss.pkl")
+#             self.trainer.logger.log_artifact(export_pickle(
+#                 self.v_sample_loss), "v_sample_loss.pkl")
+#             self.best_val_loss = loss
 
     def on_validation_epoch_start(self):
         if self.log_auc:

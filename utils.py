@@ -65,14 +65,6 @@ def do_aug(imgs, transf):
     out = list(out.values())
     return out  # returns list of np arrays
 
-
-def export_pickle(obj):
-    buffer = BytesIO()
-    pickle.dump(obj, buffer)
-    buffer.seek(0)
-
-    return buffer
-
 ################# KNEEPLOT ###############
 
 
