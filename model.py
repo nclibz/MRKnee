@@ -13,13 +13,14 @@ import timm
 
 
 class MRKnee(pl.LightningModule):
-    def __init__(self, backbone='tf_efficientnet_b0_ns',
+    def __init__(self,
+                 backbone='efficientnet_b0',
                  pretrained=True,
                  n_chans=1,
                  drop_rate=0.0,
                  learning_rate=0.0001,
-                 freeze_from=4,
-                 unfreeze_epoch=5,  # -1 for not freezing any layers
+                 freeze_from=-1,
+                 unfreeze_epoch=0,  # -1 for not freezing any layers
                  planes=['axial', 'sagittal', 'coronal'],
                  log_auc=True,
                  log_ind_loss=False):

@@ -89,23 +89,24 @@ def get_preds(datadir,
         dm = MRKneeDataModule(datadir, diagnosis, planes=[plane],
                               indp_normalz=False,)
         if stage == 'train':
-            dl = DataLoader(dm.train_ds, batch_size=1, shuffle=False)
+            ds = dm.train_ds
+            dl = DataLoader(ds, batch_size=1, shuffle=False)
         elif stage == 'valid':
-            dl = DataLoader(dm.val_ds, batch_size=1, shuffle=False)
+            ds = dm.val_ds
+            dl = DataLoader(ds, batch_size=1, shuffle=False)
 
         # gather preds
         preds_list = []
-        lbl_list = []
         for i, batch in enumerate(dl):
             imgs, label, sample_id, weight = batch
             imgs = imgs[0].to(device=torch.device('cuda'))
             preds = model(imgs)
             preds = torch.sigmoid(preds)
             preds_list.append(preds.item())
-            lbl_list.append(label.item())
-
         preds_dict[plane] = preds_list
-        preds_dict['lbls'] = lbl_list
+        if plane == planes[0]:
+            preds_dict['lbls'] = [lbl for id, lbl in ds.cases]
+            preds_dict['ids'] = [id for id, lbl in ds.cases]
     return pd.DataFrame(preds_dict)
 
 
