@@ -57,12 +57,12 @@ class MRDS(Dataset):
         imgs = np.load(path)
 
         # transforms
+        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
         if self.transf:
             imgs = do_aug(imgs, self.transf[self.stage])
 
         imgs = torch.as_tensor(imgs, dtype=torch.float32)
-        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
         # normalize
         if self.indp_normalz:
