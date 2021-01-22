@@ -24,7 +24,8 @@ class MRKnee(pl.LightningModule):
                  planes=['axial', 'sagittal', 'coronal'],
                  log_auc=True,
                  log_ind_loss=False,
-                 final_pool='max'):
+                 final_pool='max',
+                 **kwargs):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from

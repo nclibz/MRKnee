@@ -1,92 +1,135 @@
 # %%
+from optuna.integration import PyTorchLightningPruningCallback
+import optuna
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from model import MRKnee
 from data import MRKneeDataModule
 import albumentations as A
+from pytorch_lightning import Callback
+pl.seed_everything(123)
 
 
 # %%
 %load_ext autoreload
 %autoreload 2
+
+
+# %%
+class MetricsCallback(Callback):
+    """PyTorch Lightning metric callback."""
+
+    def __init__(self):
+        super().__init__()
+        self.metrics = []
+
+    def on_validation_end(self, trainer, pl_module):
+        self.metrics.append(trainer.callback_metrics)
 # %%
 
 
-IMG_SZ = 240
-PLANES = ['axial']  # , 'sagittal', 'coronal'
-N_CHANS = 1
-DIAGNOSIS = 'acl'
+def objective(trial):
 
-data_args = {
-    'datadir': 'data',
-    'diagnosis': DIAGNOSIS,
-    'planes': PLANES,
-    'n_chans': N_CHANS,
-    'num_workers': 2,
-    'transf': {
-        'train': A.Compose([A.CenterCrop(IMG_SZ, IMG_SZ)]),
-        'valid': A.Compose([A.CenterCrop(IMG_SZ, IMG_SZ)])
+    IMG_SZ = 224  # b0 = 224, b1 = 240,
+
+    cfg = {
+        # DATA
+        'datadir': 'data',
+        'diagnosis': 'meniscus',
+        'planes': ['axial'],  # , 'sagittal', 'coronal', 'axial',
+        'n_chans': 1,
+        'num_workers': 4,
+        'pin_memory': True,
+        'upsample': False,
+        'w_loss': True,
+        'indp_normalz': False,
+        'transf': {
+            'train': [A.Rotate(limit=25, p=1),
+                      A.HorizontalFlip(p=0.5),
+                      A.RandomCrop(IMG_SZ, IMG_SZ)],
+            'valid': [A.CenterCrop(IMG_SZ, IMG_SZ)]
+        },
+        # MODEL
+        'backbone': 'efficientnet_b0',
+        'pretrained': True,
+        'learning_rate': trial.suggest_loguniform('lr', 1e-6, 1e-2),
+        'drop_rate': trial.suggest_float('dropout', 0., 0.8),
+        'freeze_from': -1,
+        'unfreeze_epoch': 0,
+        'log_auc': True,
+        'log_ind_loss': True,
+        'final_pool': 'max',
+        # Trainer
+        'precision': 16,
+        'max_epochs': 5,
     }
-}
 
-model_args = {
-    'backbone': 'efficientnet_b0',
-    'pretrained': True,
-    'learning_rate': 1e-3,
-    'drop_rate': 0.5,
-    'freeze_from': -1,
-    'unfreeze_epoch': 0,
-    'planes': PLANES,
-    'n_chans': N_CHANS,
-    'log_auc': False,
-    'log_ind_loss': True
-}
+    # LOGGER
+    neptune_logger = pl_loggers.NeptuneLogger(
+        api_key="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiNDI5ODUwMzQtOTM0Mi00YTY2LWExYWQtMDNlZDZhY2NlYjUzIn0=",
+        params=cfg,
+        project_name='nclibz/optuna-test',
+        tags=[cfg['diagnosis']] + cfg['planes']
+    )
 
+    # Callbacks
+    model_checkpoint = ModelCheckpoint(dirpath=f'checkpoints/trial{trial.number}/',
+                                       filename='{epoch:02d}-{val_loss:.2f}-{val_auc:.2f}',
+                                       verbose=True,
+                                       save_top_k=2,
+                                       monitor='val_loss',
+                                       mode='min',
+                                       period=1)
 
-# %%
-pl.seed_everything(123)
+    lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
-dm = MRKneeDataModule(**data_args)
-model = MRKnee(**model_args, log_data_args=data_args)
+    metrics_callback = MetricsCallback()
 
-# Callbacks
-model_checkpoint = ModelCheckpoint(filepath='checkpoints/{epoch:02d}-{val_loss:.2f}',
-                                   save_weights_only=True,
-                                   save_top_k=3,
-                                   monitor='val_loss',
-                                   period=1)
+    prune_callback = PyTorchLightningPruningCallback(trial, monitor="val_loss")
 
+    # DM AND MODEL
+    dm = MRKneeDataModule(**cfg)
+    model = MRKnee(**cfg)
+    trainer = pl.Trainer(gpus=1,
+                         precision=cfg['precision'],
+                         max_epochs=cfg['max_epochs'],
+                         logger=neptune_logger,
+                         log_every_n_steps=100,
+                         num_sanity_val_steps=0,
+                         callbacks=[lr_monitor,
+                                    model_checkpoint,
+                                    metrics_callback,
+                                    prune_callback],
+                         progress_bar_refresh_rate=20,
+                         limit_train_batches=0.10,  # HUSK AT SLETTE
+                         deterministic=True)
 
-lr_monitor = pl.callbacks.LearningRateMonitor(logging_interval="step")
-tb_logger = pl_loggers.TensorBoardLogger(
-    'logs/', name=f'{data_args["diagnosis"]}/{PLANES}')
+    trainer.fit(model, dm)
 
-
-neptune_logger = pl_loggers.NeptuneLogger(
-    api_key="",
-    params={**model_args, **data_args},
-    project_name='nclibz/mrknee',
-    tags=[DIAGNOSIS] + PLANES
-)
-
-# MODEL
-
-# TRAINER
-trainer = pl.Trainer(gpus=1,
-                     precision=16,
-                     limit_train_batches=10,
-                     # max_epochs = 2,
-                     # overfit_batches = 10,
-                     num_sanity_val_steps=0,
-                     logger=neptune_logger,
-                     log_every_n_steps=100,
-                     callbacks=[lr_monitor, model_checkpoint],
-                     deterministic=True)
-# overfit_batches = 10
-# max_epochs = 2
-
+    return metrics_callback.metrics[-1]["val_loss"].item()
 
 # %%
-trainer.fit(model, dm)
+
+# hvis jeg skal bruge hyperband skal jeg kunne rapportere metrics imens jeg trainer?
+
+
+pruner = optuna.pruners.MedianPruner()
+# skal vel også bruge en TPE sampler?
+study = optuna.create_study(direction="minimize", pruner=pruner)
+
+study.optimize(objective, n_trials=10, timeout=600)
+
+print("Number of finished trials: {}".format(len(study.trials)))
+
+print("Best trial:")
+trial = study.best_trial
+
+print("  Value: {}".format(trial.value))
+
+print("  Params: ")
+for key, value in trial.params.items():
+    print("    {}: {}".format(key, value))
+
+
 # %%

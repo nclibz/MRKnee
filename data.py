@@ -57,6 +57,7 @@ class MRDS(Dataset):
         imgs = np.load(path)
 
         # transforms
+        # hvis results pludselig bliver dårlig flyt under transforms
         imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
         if self.transf:
@@ -101,12 +102,16 @@ class MRKneeDataModule(pl.LightningDataModule):
                  n_chans=1,
                  w_loss=True,
                  indp_normalz=False,
+                 num_workers=1,
+                 pin_memory=True,
                  ** kwargs):
         super().__init__()
         self.kwargs = kwargs
         self.upsample = upsample
         self.w_loss = w_loss
         self.indp_normalz = indp_normalz
+        self.num_workers = num_workers
+        self.pin_memory = pin_memory
 
         assert(self.upsample != self.w_loss)
 
@@ -136,15 +141,22 @@ class MRKneeDataModule(pl.LightningDataModule):
     def train_dataloader(self):
         if self.upsample:
             trainloader = DataLoader(self.train_ds, batch_size=1,
-                                     sampler=self.sampler, **self.kwargs)
+                                     sampler=self.sampler,
+                                     num_workers=self.num_workers,
+                                     pin_memory=self.pin_memory)
         else:
             trainloader = DataLoader(self.train_ds, batch_size=1,
-                                     shuffle=True, **self.kwargs)
+                                     shuffle=True,
+                                     num_workers=self.num_workers,
+                                     pin_memory=self.pin_memory)
 
         return trainloader
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1, shuffle=False, **self.kwargs)
+        return DataLoader(self.val_ds, batch_size=1,
+                          shuffle=False,
+                          num_workers=self.num_workers,
+                          pin_memory=self.pin_memory)
 
 
 # %%
