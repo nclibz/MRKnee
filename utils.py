@@ -9,6 +9,7 @@ from torch.nn.functional import threshold
 from torch.utils.data.dataloader import DataLoader
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import roc_auc_score
+import albumentations as A
 
 
 def show_batch(img_tens):
@@ -62,7 +63,7 @@ def do_aug(imgs, transf):
             img_name = 'image'+f'{i}'
             img_dict[img_name] = imgs[i, :, :]
             target_dict[img_name] = 'image'
-
+    transf = A.Compose(transf)
     transf.add_targets(target_dict)
     out = transf(**img_dict)
     out = list(out.values())
