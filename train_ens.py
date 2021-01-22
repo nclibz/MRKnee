@@ -42,7 +42,7 @@ y_val = acl_val['lbls']
 
 
 # %%
-# tune clfs
+# tune clfs - bruge ray tune istedet??
 # LGBM
 pgrid_lgbm = {"n_estimators": Integer(1, 100),
               "min_child_samples": Integer(20, 200)}
