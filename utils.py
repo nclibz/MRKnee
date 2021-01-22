@@ -1,9 +1,11 @@
+from sklearn.base import BaseEstimator, ClassifierMixin
 import matplotlib.pyplot as plt
 import heapq
 import pandas as pd
 from ipywidgets import interact, Dropdown, IntSlider
 import torch
 import numpy as np
+from torch.nn.functional import threshold
 from torch.utils.data.dataloader import DataLoader
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import roc_auc_score
@@ -108,6 +110,32 @@ def get_preds(datadir,
             preds_dict['lbls'] = [lbl for id, lbl in ds.cases]
             preds_dict['ids'] = [id for id, lbl in ds.cases]
     return pd.DataFrame(preds_dict)
+
+
+class VotingCLF(BaseEstimator, ClassifierMixin):
+
+    def __init__(self, method='hard', threshold=0.5, planes=['axial', 'sagittal', 'coronal']):
+        self.method = method
+        self.threshold = threshold
+        self.planes = planes
+
+    def fit(self, X, y):
+        return self
+
+    def predict(self, X):
+        if self.method == 'hard':
+            for plane in self.planes:
+                X[plane] = np.where(X[plane] > self.threshold, 1, 0)
+                X = X.assign(
+                    hard_vote=X_val[['axial', 'sagittal', 'coronal']].sum(axis=1))
+                X = X.assign(hard_vote=np.where(X['hard_vote'] > 1, 1, 0))
+            preds = X['hard_vote'].to_numpy()
+        if self.method == 'soft':
+            soft_voter = X.assign(soft_vote=X.mean(axis=1))
+            soft_voter['soft_vote'] = np.where(X['soft_vote'] > 0.5, 1, 0)
+            preds = X['hard_vote'].to_numpy()
+
+        return preds
 
 
 def compare_clfs(clfs, X, y, X_val, y_val):
