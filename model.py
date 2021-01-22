@@ -52,8 +52,10 @@ class MRKnee(pl.LightningModule):
        # x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør det?
         if self.final_pool == 'max':
             x = F.adaptive_max_pool2d(x.unsqueeze(0), (1, self.num_features))
+            x = x.unsqueeze(0)
         elif self.final_pool == 'avg':
             x = F.adaptive_avg_pool2d(x.unsqueeze(0), (1, self.num_features))
+            x = x.unsqueeze(0)
         return x
 
     def forward(self, x):
