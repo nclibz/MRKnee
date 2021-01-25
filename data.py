@@ -58,9 +58,6 @@ class MRDS(Dataset):
         path = f'{self.datadir}/{self.stage}/{plane}/{id}.npy'
         imgs = np.load(path)
 
-        # transforms
-        # hvis results pludselig bliver dårlig flyt under transforms
-
         if self.transf:
             imgs = do_aug(imgs, self.transf[self.stage])
 
