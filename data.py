@@ -64,10 +64,10 @@ class MRDS(Dataset):
         if self.transf:
             imgs = do_aug(imgs, self.transf[self.stage])
 
+        imgs = torch.as_tensor(imgs, dtype=torch.float32)
+
         if self.same_range:
             imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
-
-        imgs = torch.as_tensor(imgs, dtype=torch.float32)
 
         # normalize
         if self.indp_normalz:
