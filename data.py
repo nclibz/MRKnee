@@ -18,7 +18,8 @@ class MRDS(Dataset):
                  planes=['axial', 'sagittal', 'coronal'],
                  n_chans=1,
                  indp_normalz=True,
-                 w_loss=True,):
+                 w_loss=True,
+                 same_range=True):
         super().__init__()
         self.stage = stage
         self.datadir = datadir
@@ -28,6 +29,7 @@ class MRDS(Dataset):
         self.diagnosis = diagnosis
         self.indp_normalz = indp_normalz
         self.w_loss = w_loss
+        self.same_range = same_range
 
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
@@ -58,10 +60,12 @@ class MRDS(Dataset):
 
         # transforms
         # hvis results pludselig bliver dårlig flyt under transforms
-        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
         if self.transf:
             imgs = do_aug(imgs, self.transf[self.stage])
+
+        if self.same_range:
+            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
 
         imgs = torch.as_tensor(imgs, dtype=torch.float32)
 
@@ -104,6 +108,7 @@ class MRKneeDataModule(pl.LightningDataModule):
                  indp_normalz=False,
                  num_workers=1,
                  pin_memory=True,
+                 same_range=True,
                  ** kwargs):
         super().__init__()
         self.kwargs = kwargs
@@ -112,6 +117,7 @@ class MRKneeDataModule(pl.LightningDataModule):
         self.indp_normalz = indp_normalz
         self.num_workers = num_workers
         self.pin_memory = pin_memory
+        self.same_range = same_range
 
         assert(self.upsample != self.w_loss)
 
@@ -122,7 +128,8 @@ class MRKneeDataModule(pl.LightningDataModule):
                              planes,
                              n_chans,
                              w_loss=w_loss,
-                             indp_normalz=self.indp_normalz)
+                             indp_normalz=self.indp_normalz,
+                             same_range=self.same_range)
         self.val_ds = MRDS(datadir,
                            'valid',
                            diagnosis,
@@ -130,7 +137,8 @@ class MRKneeDataModule(pl.LightningDataModule):
                            planes,
                            n_chans,
                            w_loss=w_loss,
-                           indp_normalz=self.indp_normalz)
+                           indp_normalz=self.indp_normalz,
+                           same_range=self.same_range)
         if self.upsample:
             lbls = [lbl for _, lbl in self.train_ds.cases]
             class_counts = np.bincount(lbls)
