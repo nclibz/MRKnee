@@ -58,7 +58,7 @@ def objective(trial):
         'freeze_from': -1,
         'unfreeze_epoch': 0,
         'log_auc': True,
-        'log_ind_loss': True,
+        'log_ind_loss': False,
         'final_pool': 'max',
         # Trainer
         'precision': 16,
@@ -131,5 +131,7 @@ print("  Params: ")
 for key, value in trial.params.items():
     print("    {}: {}".format(key, value))
 
+
+# %%
 
 # %%
