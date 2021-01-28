@@ -70,8 +70,10 @@ class MRKnee(pl.LightningModule):
         # lstm
         if self.do_lstm:
             x = x.unsqueeze(0)
-            h0 = torch.zeros(self.lstm_layers * 2, x.size(0), self.lstm_h_size)
-            c0 = torch.zeros(self.lstm_layers * 2, x.size(0), self.lstm_h_size)
+            h0 = torch.zeros(self.lstm_layers * 2, x.size(0),
+                             self.lstm_h_size).to(self.device)
+            c0 = torch.zeros(self.lstm_layers * 2, x.size(0),
+                             self.lstm_h_size).to(self.device)
             x, _ = self.lstm(x, (h0, c0))
 
         # final pooling
