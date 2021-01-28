@@ -5,7 +5,6 @@ import pandas as pd
 from ipywidgets import interact, Dropdown, IntSlider
 import torch
 import numpy as np
-from torch.nn.functional import threshold
 from torch.utils.data.dataloader import DataLoader
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import roc_auc_score
