@@ -25,7 +25,10 @@ class MRKnee(pl.LightningModule):
                  log_auc=True,
                  log_ind_loss=False,
                  final_pool='max',
-                 **kwargs):
+                 lstm=True,
+                 lstm_layers=1,
+                 lstm_h_size=512,
+                 ** kwargs):
         super().__init__()
         self.learning_rate = learning_rate
         self.freeze_from = freeze_from
@@ -42,6 +45,19 @@ class MRKnee(pl.LightningModule):
         self.backbones = ModuleList([self._freeze(module.as_sequential(), freeze_from)
                                      for module in self.backbones])
         self.clf = nn.Linear(self.num_features*self.n_planes, 1)
+
+        # lstm
+        self.do_lstm = lstm
+        self.lstm_layers = lstm_layers
+        self.lstm_h_size = lstm_h_size
+        if self.do_lstm:
+            self.lstm = nn.LSTM(input_size=self.num_features,
+                                hidden_size=lstm_h_size,
+                                num_layers=lstm_layers,
+                                batch_first=True, bidirectional=True
+                                )
+            self.clf = nn.Linear(lstm_h_size * 2, 1)  # *2 because bidirectional
+
         # logging
         self.t_sample_loss = {}
         self.v_sample_loss = {}
@@ -50,7 +66,15 @@ class MRKnee(pl.LightningModule):
     def run_model(self, model, series):
         x = torch.squeeze(series, dim=0)
         x = model(x)
-       # x = torch.max(x, 0, keepdim=True)[0]  # Hvad gør det?
+
+        # lstm
+        if self.do_lstm:
+            x = x.unsqueeze(0)
+            h0 = torch.zeros(self.lstm_layers * 2, x.size(0), self.lstm_h_size)
+            c0 = torch.zeros(self.lstm_layers * 2, x.size(0), self.lstm_h_size)
+            x, _ = self.lstm(x, (h0, c0))
+
+        # final pooling
         if self.final_pool == 'max':
             x = F.adaptive_max_pool2d(x.unsqueeze(0), (1, self.num_features))
             x = x.squeeze(0)
@@ -74,13 +98,6 @@ class MRKnee(pl.LightningModule):
             'optimizer': optimizer,
             'lr_scheduler': torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, threshold=1e-4),
             'monitor': 'val_loss'}
-
-        # {
-        #     'optimizer': optimizer,
-        #     'lr_scheduler': CyclicLR(optimizer, base_lr=1e-6, max_lr=self.learning_rate, step_size_up=len(self.train_dataloader())*2, mode="triangular2", cycle_momentum=False),
-        #     'interval': 'step',
-        #     'frequency': 1,
-        # }
 
     def training_step(self, batch, batchidx):
         imgs, label, sample_id, weight = batch
