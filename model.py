@@ -66,10 +66,9 @@ class MRKnee(pl.LightningModule):
     def run_model(self, model, series):
         x = torch.squeeze(series, dim=0)
         x = model(x)
-
+        x = x.unsqueeze(0)
         # lstm
         if self.do_lstm:
-            x = x.unsqueeze(0)
             h0 = torch.zeros(self.lstm_layers * 2, x.size(0),
                              self.lstm_h_size).to(self.device)
             c0 = torch.zeros(self.lstm_layers * 2, x.size(0),
@@ -78,10 +77,10 @@ class MRKnee(pl.LightningModule):
 
         # final pooling
         if self.final_pool == 'max':
-            x = F.adaptive_max_pool2d(x.unsqueeze(0), (1, self.num_features))
+            x = F.adaptive_max_pool2d(x, (1, x.size(-1)))
             x = x.squeeze(0)
         elif self.final_pool == 'avg':
-            x = F.adaptive_avg_pool2d(x.unsqueeze(0), (1, self.num_features))
+            x = F.adaptive_avg_pool2d(x, (1, x.size(-1)))
             x = x.squeeze(0)
         return x
 
