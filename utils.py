@@ -11,10 +11,6 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import roc_auc_score
 import albumentations as A
 
-##
-
-#
-
 
 def show_batch(img_tens):
     inp = img_tens.squeeze(1).numpy()
