@@ -18,6 +18,7 @@ class MRKnee(pl.LightningModule):
                  pretrained=True,
                  n_chans=1,
                  drop_rate=0.0,
+                 final_drop=0.0,
                  learning_rate=0.0001,
                  freeze_from=-1,
                  unfreeze_epoch=0,  # -1 for not freezing any layers
@@ -40,6 +41,7 @@ class MRKnee(pl.LightningModule):
                                             in_chans=n_chans, drop_rate=drop_rate, ) for i in range(self.n_planes)]
         self.num_features = self.backbones[0].num_features
         self.final_pool = final_pool
+        self.final_drop = nn.Dropout(p=final_drop)
 
         # freeze backbones
         self.backbones = ModuleList([self._freeze(module.as_sequential(), freeze_from)
@@ -63,33 +65,35 @@ class MRKnee(pl.LightningModule):
         self.v_sample_loss = {}
         self.best_val_loss = 20
 
-    def run_model(self, model, series):
-        x = torch.squeeze(series, dim=0)
-        x = model(x)
-        x = x.unsqueeze(0)
-        # lstm
-        if self.do_lstm:
-            h0 = torch.zeros(self.lstm_layers * 2, x.size(0),
-                             self.lstm_h_size).to(self.device)
-            c0 = torch.zeros(self.lstm_layers * 2, x.size(0),
-                             self.lstm_h_size).to(self.device)
-            x, _ = self.lstm(x, (h0, c0))
-
-        # final pooling
-        if self.final_pool == 'max':
-            x = F.adaptive_max_pool2d(x, (1, x.size(-1)))
-            x = x.squeeze(0)
-        elif self.final_pool == 'avg':
-            x = F.adaptive_avg_pool2d(x, (1, x.size(-1)))
-            x = x.squeeze(0)
-        return x
-
     def forward(self, x):
         x = [self.run_model(model, series)
              for model, series in zip(self.backbones, x)]
         x = torch.cat(x, 1)
+        x = self.final_drop(x)
         x = self.clf(x)
         return x
+
+    def run_model(self, model, series):
+        x = torch.squeeze(series, dim=0)
+        x = model(x)  # (num_imgs, num_features)
+        x = x.unsqueeze(0)  # (1, num_imgs, num_features)
+        # lstm
+        if self.do_lstm:
+            x = self.final_drop(x)
+            h0 = torch.zeros(self.lstm_layers * 2, x.size(0),
+                             self.lstm_h_size).to(self.device)
+            c0 = torch.zeros(self.lstm_layers * 2, x.size(0),
+                             self.lstm_h_size).to(self.device)
+            x, _ = self.lstm(x, (h0, c0))  # (1, num_imgs, lstm_h_size * 2 )
+
+        # final pooling
+        if self.final_pool == 'max':
+            x = F.adaptive_max_pool2d(x, (1, x.size(-1)))
+            x = x.squeeze(0)  # (num_imgs, num_features_out)
+        elif self.final_pool == 'avg':
+            x = F.adaptive_avg_pool2d(x, (1, x.size(-1)))
+            x = x.squeeze(0)
+        return x  # (num_imgs, num_features_out)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
