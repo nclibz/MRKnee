@@ -60,6 +60,7 @@ def objective(trial):
         'log_auc': True,
         'log_ind_loss': False,
         'final_pool': 'max',
+        'lstm_pool': False,
         # Trainer
         'precision': 16,
         'max_epochs': 5,

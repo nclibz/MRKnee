@@ -29,6 +29,7 @@ class MRKnee(pl.LightningModule):
                  lstm=True,
                  lstm_layers=1,
                  lstm_h_size=512,
+                 lstm_pool=True,
                  ** kwargs):
         super().__init__()
         self.learning_rate = learning_rate
@@ -50,6 +51,7 @@ class MRKnee(pl.LightningModule):
 
         # lstm
         self.do_lstm = lstm
+        self.do_lstm_pool = lstm_pool
         self.lstm_layers = lstm_layers
         self.lstm_h_size = lstm_h_size
         if self.do_lstm:
@@ -87,13 +89,16 @@ class MRKnee(pl.LightningModule):
             x, _ = self.lstm(x, (h0, c0))  # (1, num_imgs, lstm_h_size * 2 )
 
         # final pooling
-        if self.final_pool == 'max':
-            x = F.adaptive_max_pool2d(x, (1, x.size(-1)))
-            x = x.squeeze(0)  # (num_imgs, num_features_out)
-        elif self.final_pool == 'avg':
-            x = F.adaptive_avg_pool2d(x, (1, x.size(-1)))
-            x = x.squeeze(0)
-        return x  # (num_imgs, num_features_out)
+        if self.do_lstm is not True or self.do_lstm_pool:
+            if self.final_pool == 'max':
+                x = F.adaptive_max_pool2d(x, (1, x.size(-1)))
+                x = x.squeeze(0)  # (1, num_features_out)
+            elif self.final_pool == 'avg':
+                x = F.adaptive_avg_pool2d(x, (1, x.size(-1)))
+                x = x.squeeze(0)
+        else:
+            x = x[:, -1, :]  # ( 1, num_features_out)
+        return x  # (1, num_features_out)
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
