@@ -1,5 +1,6 @@
 # %%
 
+import pandas as pd
 import lightgbm
 from utils import get_preds, compare_clfs, VotingCLF, fit_bcv
 
@@ -82,4 +83,6 @@ acl_val.loc[(acl_val['axial'] < 0.5) & (acl_val['sagittal'] < 0.5)
             & (acl_val['coronal'] < 0.5) & (acl_val['lbls'] != 0)]
 
 
+# %%
+acl_train = pd.read_csv("acl_train.csv")
 # %%
