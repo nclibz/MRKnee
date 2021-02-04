@@ -10,6 +10,24 @@ from utils import do_aug
 # %%
 
 
+def get_exclusions(stage, plane):
+    e = {'train':
+         {'sagittal': [],
+          'axial': [],
+          'coronal': []
+          },
+
+         'valid':
+         {'sagittal': ['1159', '1230'],
+          'axial': [],
+          'coronal': []
+          }
+         }
+    return e[stage][plane]
+
+
+# %%
+
 class MRDS(Dataset):
     def __init__(self, datadir,
                  stage,
@@ -19,7 +37,8 @@ class MRDS(Dataset):
                  n_chans=1,
                  indp_normalz=True,
                  w_loss=True,
-                 same_range=True):
+                 same_range=True,
+                 clean=True):
         super().__init__()
         self.stage = stage
         self.datadir = datadir
@@ -31,10 +50,16 @@ class MRDS(Dataset):
         self.w_loss = w_loss
         self.same_range = same_range
 
+        # get list of exclusions
+        if clean:
+            exclude = get_exclusions(stage, planes[0])
+        else:
+            exclude = []
+
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
             self.cases = [(row[0], int(row[1]))
-                          for row in list(csv.reader(f))]
+                          for row in list(csv.reader(f)) if row[0] not in exclude]
 
         if w_loss:
             lbls = [lbl for _, lbl in self.cases]
@@ -106,6 +131,7 @@ class MRKneeDataModule(pl.LightningDataModule):
                  num_workers=1,
                  pin_memory=True,
                  same_range=True,
+                 clean=True,
                  ** kwargs):
         super().__init__()
         self.kwargs = kwargs
@@ -126,7 +152,8 @@ class MRKneeDataModule(pl.LightningDataModule):
                              n_chans,
                              w_loss=w_loss,
                              indp_normalz=self.indp_normalz,
-                             same_range=self.same_range)
+                             same_range=self.same_range,
+                             clean=clean)
         self.val_ds = MRDS(datadir,
                            'valid',
                            diagnosis,
@@ -135,7 +162,8 @@ class MRKneeDataModule(pl.LightningDataModule):
                            n_chans,
                            w_loss=w_loss,
                            indp_normalz=self.indp_normalz,
-                           same_range=self.same_range)
+                           same_range=self.same_range,
+                           clean=clean)
         if self.upsample:
             lbls = [lbl for _, lbl in self.train_ds.cases]
             class_counts = np.bincount(lbls)
