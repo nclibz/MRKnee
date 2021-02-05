@@ -134,7 +134,6 @@ class MRKneeDataModule(pl.LightningDataModule):
                  clean=True,
                  ** kwargs):
         super().__init__()
-        self.kwargs = kwargs
         self.upsample = upsample
         self.w_loss = w_loss
         self.indp_normalz = indp_normalz

@@ -74,7 +74,8 @@ def get_preds(datadir,
               stage='train',
               planes=['axial', 'sagittal', 'coronal'],
               ckpt_dir='models/',
-              backbones=['efficientnet_b0', 'efficientnet_b0', 'efficientnet_b0']):
+              backbones=['efficientnet_b0', 'efficientnet_b0', 'efficientnet_b0'],
+              **kwargs):
     from data import MRKneeDataModule  # to prevent circular imports
     from model import MRKnee
     model_ckpts = [f'{ckpt_dir}{diagnosis}_{plane}.ckpt' for plane in planes]
@@ -83,13 +84,17 @@ def get_preds(datadir,
     for plane, model_ckpt, backbone in zip(planes, model_ckpts, backbones):
         # model setup
         model = MRKnee.load_from_checkpoint(
-            model_ckpt, planes=[plane], backbone=backbone)
+            model_ckpt, planes=[plane], backbone=backbone, **kwargs)
         model.freeze()
         model.to(device=torch.device('cuda'))
 
         # data setup
-        dm = MRKneeDataModule(datadir, diagnosis, planes=[plane],
-                              indp_normalz=False,)
+        dm = MRKneeDataModule(datadir,
+                              diagnosis,
+                              planes=[plane],
+                              indp_normalz=True,
+                              num_workers=4,
+                              clean=False)
         if stage == 'train':
             ds = dm.train_ds
             dl = DataLoader(ds, batch_size=1, shuffle=False)
@@ -127,14 +132,13 @@ class VotingCLF(BaseEstimator, ClassifierMixin):
             for plane in self.planes:
                 X[plane] = np.where(X[plane] > self.threshold, 1, 0)
                 X = X.assign(
-                    hard_vote=X_val[['axial', 'sagittal', 'coronal']].sum(axis=1))
+                    hard_vote=X[['axial', 'sagittal', 'coronal']].sum(axis=1))
                 X = X.assign(hard_vote=np.where(X['hard_vote'] > 1, 1, 0))
             preds = X['hard_vote'].to_numpy()
         if self.method == 'soft':
-            soft_voter = X.assign(soft_vote=X.mean(axis=1))
-            soft_voter['soft_vote'] = np.where(X['soft_vote'] > 0.5, 1, 0)
-            preds = X['hard_vote'].to_numpy()
-
+            X = X.assign(soft_vote=X.mean(axis=1))
+            X['soft_vote'] = np.where(X['soft_vote'] > 0.5, 1, 0)
+            preds = X['soft_vote'].to_numpy()
         return preds
 
 

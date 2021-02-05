@@ -26,7 +26,7 @@ class MRKnee(pl.LightningModule):
                  log_auc=True,
                  log_ind_loss=False,
                  final_pool='max',
-                 lstm=True,
+                 lstm=False,
                  lstm_layers=1,
                  lstm_h_size=512,
                  adam_wd=0.01,

@@ -7,6 +7,7 @@ todo
 error_analysis.txt
 error_analysis.ods
 *.csv
+*.ckpt
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,jupyternotebooks,vscode
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,python,jupyternotebooks,vscode
