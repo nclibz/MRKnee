@@ -12,9 +12,9 @@ from utils import do_aug
 
 def get_exclusions(stage, plane):
     e = {'train':
-         {'sagittal': [],
-          'axial': [],
-          'coronal': []
+         {'sagittal': ['3', '275', '544', '582', '665', '776', '795', '864', '1043'],
+          'axial': ['665', '1043'],
+          'coronal': ['310', '544', '610', ' 665', '1010', '1043']
           },
 
          'valid':
