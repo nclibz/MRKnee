@@ -167,23 +167,20 @@ class MRKneeDataModule(pl.LightningDataModule):
             lbls = [lbl for _, lbl in self.train_ds.cases]
             class_counts = np.bincount(lbls)
             class_weights = 1 / torch.Tensor(class_counts)
-            self.samples_weight = [class_weights[t] for t in lbls]
+            samples_weight = [class_weights[t] for t in lbls]
             self.sampler = WeightedRandomSampler(samples_weight, 1)
 
     def train_dataloader(self):
         if self.upsample:
-            sampler = WeightedRandomSampler(self.samples_weight, 1)
-
+            trainloader = DataLoader(self.train_ds, batch_size=1,
+                                     sampler=self.sampler,
+                                     num_workers=self.num_workers,
+                                     pin_memory=self.pin_memory)
         else:
             trainloader = DataLoader(self.train_ds, batch_size=1,
                                      shuffle=True,
                                      num_workers=self.num_workers,
                                      pin_memory=self.pin_memory)
-
-        trainloader = DataLoader(self.train_ds, batch_size=1,
-                                 sampler=sampler,
-                                 num_workers=self.num_workers,
-                                 pin_memory=self.pin_memory)
 
         return trainloader
 
