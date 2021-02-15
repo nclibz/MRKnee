@@ -19,7 +19,7 @@ def get_exclusions(stage, plane):
 
          'valid':
          {'sagittal': ['1159', '1230'],
-          'axial': [],
+          'axial': ['1136'],
           'coronal': []
           }
          }
