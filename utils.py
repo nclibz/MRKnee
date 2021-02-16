@@ -69,12 +69,12 @@ def do_aug(imgs, transf):
     return out  # returns list of np arrays
 
 
-def get_preds(datadir,
-              diagnosis,
+def get_preds(datadir='data',
+              diagnosis='acl',
               stage='train',
               planes=['axial', 'sagittal', 'coronal'],
               ckpt_dir='models/',
-              backbones=['efficientnet_b0', 'efficientnet_b0', 'efficientnet_b0'],
+              backbones=['efficientnet_b1']*3,
               **kwargs):
     from data import MRKneeDataModule  # to prevent circular imports
     from model import MRKnee
@@ -132,7 +132,7 @@ class VotingCLF(BaseEstimator, ClassifierMixin):
             for plane in self.planes:
                 X[plane] = np.where(X[plane] > self.threshold, 1, 0)
                 X = X.assign(
-                    hard_vote=X[['axial', 'sagittal', 'coronal']].sum(axis=1))
+                    hard_vote=X[self.planes].sum(axis=1))
                 X = X.assign(hard_vote=np.where(X['hard_vote'] > 1, 1, 0))
             preds = X['hard_vote'].to_numpy()
         if self.method == 'soft':
