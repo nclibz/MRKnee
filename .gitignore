@@ -10,6 +10,7 @@ error_analysis.ods
 *.ckpt
 models/
 preds/
+submit_test/
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,jupyternotebooks,vscode
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,python,jupyternotebooks,vscode
@@ -190,3 +191,4 @@ dmypy.json
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,python,jupyternotebooks,vscode
+.Rproj.user

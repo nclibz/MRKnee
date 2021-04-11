@@ -4,7 +4,6 @@ from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
 import numpy as np
 import csv
-
 from torch.utils.data.sampler import WeightedRandomSampler
 from utils import do_aug
 # %%
@@ -59,7 +58,7 @@ class MRDS(Dataset):
         # get cases
         with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
             self.cases = [(row[0], int(row[1]))
-                          for row in list(csv.reader(f)) if row[0] not in exclude]
+                          for row in list(csv.reader(f)) if row[0] not in exclude]  # inefficient
 
         if w_loss:
             lbls = [lbl for _, lbl in self.cases]

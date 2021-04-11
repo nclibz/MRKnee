@@ -28,9 +28,6 @@ acl_val = pd.read_csv('preds/acl_train.csv')
 # %%
 # ACL
 
-#acl_train = pd.read_csv('preds/acl_train.csv')
-#acl_val = pd.read_csv('preds/acl_train.csv')
-
 # %%
 acl_train = get_preds(diagnosis='acl', stage='train')
 acl_val = get_preds(diagnosis='acl', stage='valid')
@@ -50,17 +47,20 @@ acl_probas = acl_clf.predict_proba(acl_X_val)
 acl_auc = roc_auc_score(acl_y_val, acl_probas[:, 1])
 print(acl_auc)
 
+
 # %%
+men_train = pd.read_csv('preds/men_train.csv')
+men_val = pd.read_csv('preds/men_val.csv')
+# %%
+
 # MENISCUS
 men_train = get_preds(diagnosis='meniscus',
-                      backbones=['efficientnet_b0']*3,
+                      backbones=['efficientnet_b1'] + ['efficientnet_b0']*2,
                       stage='train')
 men_val = get_preds(diagnosis='meniscus',
-                    backbones=['efficientnet_b0']*3,
+                    backbones=['efficientnet_b1'] + ['efficientnet_b0']*2,
                     stage='valid')
-# %%
-men_train = pd.read_csv('men_train.csv')
-men_val = pd.read_csv('men_val.csv')
+
 # %%
 men_X = men_train[['axial', 'sagittal', 'coronal']]
 men_y = men_train['lbls']
@@ -74,16 +74,16 @@ men_probas = men_clf.predict_proba(men_X_val)
 men_auc = roc_auc_score(men_y_val, men_probas[:, 1])
 print(men_auc)
 
-# %%
-# ABNORMAL
-
-abn_train = get_preds(diagnosis='abnormal', stage='train')
-abn_val = get_preds(diagnosis='abnormal', stage='valid')
 
 # %%
 abn_train = pd.read_csv('preds/abn_train.csv')
 abn_val = pd.read_csv('preds/abn_val.csv')
 
+# %%
+# ABNORMAL
+
+abn_train = get_preds(diagnosis='abnormal', stage='train')
+abn_val = get_preds(diagnosis='abnormal', stage='valid')
 
 # %%
 abn_X = abn_train[['axial', 'sagittal', 'coronal']]
@@ -104,7 +104,7 @@ np.mean(log_aucs)
 # %%
 # SAVE CLFS
 for name, clf in {'acl_clf': acl_clf, 'men_clf': men_clf, 'abn_clf': abn_clf}.items():
-    dump(clf, f'models/{name}.joblib')
+    dump(clf, f'src/models/{name}.joblib')
 
 # %%
 dfs = {
@@ -120,7 +120,9 @@ for name, df in dfs.items():
 # %%
 
 # %%
-# TESTER BCV
+
+
+############ TESTER BCV ######################
 
 
 def fit_bcv(estimator,

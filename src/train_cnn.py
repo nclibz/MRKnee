@@ -18,7 +18,6 @@ pl.seed_everything(123)
 
 # %%
 class MetricsCallback(Callback):
-    """PyTorch Lightning metric callback."""
 
     def __init__(self):
         super().__init__()

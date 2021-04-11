@@ -75,6 +75,8 @@ def get_preds(datadir='data',
               planes=['axial', 'sagittal', 'coronal'],
               ckpt_dir='models/',
               backbones=['efficientnet_b1']*3,
+              device='cuda',
+              num_workers=4,
               **kwargs):
     from data import MRKneeDataModule  # to prevent circular imports
     from model import MRKnee
@@ -86,27 +88,36 @@ def get_preds(datadir='data',
         model = MRKnee.load_from_checkpoint(
             model_ckpt, planes=[plane], backbone=backbone, **kwargs)
         model.freeze()
-        model.to(device=torch.device('cuda'))
+        model = model.to(device=torch.device(device))
+
+        if 'b0' in backbone:
+            img_sz = 224
+        elif 'b1' in backbone:
+            img_sz = 240
+
+        transf = {
+            'train': [A.CenterCrop(img_sz, img_sz)],
+            'valid': [A.CenterCrop(img_sz, img_sz)]}
 
         # data setup
         dm = MRKneeDataModule(datadir,
                               diagnosis,
                               planes=[plane],
                               indp_normalz=True,
-                              num_workers=4,
-                              clean=False)
+                              clean=False,
+                              transf=transf)
         if stage == 'train':
             ds = dm.train_ds
-            dl = DataLoader(ds, batch_size=1, shuffle=False)
+            dl = DataLoader(ds, batch_size=1, shuffle=False, num_workers=num_workers)
         elif stage == 'valid':
             ds = dm.val_ds
-            dl = DataLoader(ds, batch_size=1, shuffle=False)
+            dl = DataLoader(ds, batch_size=1, shuffle=False, num_workers=num_workers)
 
         # gather preds
         preds_list = []
         for i, batch in enumerate(dl):
             imgs, label, sample_id, weight = batch
-            imgs = imgs[0].to(device=torch.device('cuda'))
+            imgs = imgs[0].to(device=torch.device(device))
             preds = model(imgs)
             preds = torch.sigmoid(preds)
             preds_list.append(preds.item())
@@ -115,31 +126,6 @@ def get_preds(datadir='data',
             preds_dict['lbls'] = [lbl for id, lbl in ds.cases]
             preds_dict['ids'] = [id for id, lbl in ds.cases]
     return pd.DataFrame(preds_dict)
-
-
-class VotingCLF(BaseEstimator, ClassifierMixin):
-
-    def __init__(self, method='hard', threshold=0.5, planes=['axial', 'sagittal', 'coronal']):
-        self.method = method
-        self.threshold = threshold
-        self.planes = planes
-
-    def fit(self, X, y):
-        return self
-
-    def predict(self, X):
-        if self.method == 'hard':
-            for plane in self.planes:
-                X[plane] = np.where(X[plane] > self.threshold, 1, 0)
-                X = X.assign(
-                    hard_vote=X[self.planes].sum(axis=1))
-                X = X.assign(hard_vote=np.where(X['hard_vote'] > 1, 1, 0))
-            preds = X['hard_vote'].to_numpy()
-        if self.method == 'soft':
-            X = X.assign(soft_vote=X.mean(axis=1))
-            X['soft_vote'] = np.where(X['soft_vote'] > 0.5, 1, 0)
-            preds = X['soft_vote'].to_numpy()
-        return preds
 
 
 def compare_clfs(clfs, X, y, X_val, y_val):

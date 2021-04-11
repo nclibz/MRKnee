@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.container import ModuleList
-
 import timm
 
 # %%
@@ -21,7 +20,7 @@ class MRKnee(pl.LightningModule):
                  final_drop=0.0,
                  learning_rate=0.0001,
                  freeze_from=-1,
-                 unfreeze_epoch=0,  # -1 for not freezing any layers
+                 unfreeze_epoch=0,
                  planes=['axial', 'sagittal', 'coronal'],
                  log_auc=True,
                  log_ind_loss=False,
@@ -61,11 +60,6 @@ class MRKnee(pl.LightningModule):
                                 batch_first=True, bidirectional=False
                                 )
             self.clf = nn.Linear(lstm_h_size, 1)
-
-        # logging
-        self.t_sample_loss = {}
-        self.v_sample_loss = {}
-        self.best_val_loss = 20
 
     def forward(self, x):
         x = [self.run_model(model, series)
@@ -117,8 +111,6 @@ class MRKnee(pl.LightningModule):
 
         # logging
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
-        if self.log_ind_loss:
-            self.t_sample_loss[sample_id] = (loss.detach(), label)
         return loss
 
     def on_train_epoch_start(self):
@@ -135,21 +127,10 @@ class MRKnee(pl.LightningModule):
         # logging
 
         self.log('val_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
-        if self.log_ind_loss:
-            self.v_sample_loss[sample_id] = loss
         if self.log_auc:
             self.preds.append(torch.sigmoid(logit).squeeze(0))
             self.lbl.append(label.squeeze(0))
         return loss
-
-# log sample losses til neptune VIRKER IKKE LIGE NU - det er under validation step. Skal bruge mean loss
-# kan bare bruge den fra neptune-contrib
-#         if loss < self.best_val_loss:
-#             self.trainer.logger.log_artifact(export_pickle(
-#                 self.t_sample_loss), "t_sample_loss.pkl")
-#             self.trainer.logger.log_artifact(export_pickle(
-#                 self.v_sample_loss), "v_sample_loss.pkl")
-#             self.best_val_loss = loss
 
     def on_validation_epoch_start(self):
         if self.log_auc:

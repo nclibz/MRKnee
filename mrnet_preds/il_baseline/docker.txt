@@ -1,0 +1,2 @@
+
+docker run -it --gpus all -v $PWD:/srv gw000/keras@sha256:24dd95d65d9cd908f354e1437e350f46307ca23e4dc1532ea70e1b52aaf192ed python src/main.py valid-paths.csv predictions.csv

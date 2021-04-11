@@ -1,0 +1,49 @@
+---
+title: "Using deep learning to diagnose knee injuries on magnetic resonance images: current potential and limitations "
+author: Nicolai Sandau BSc MD^1^, Stig Brorson MD PhD DMSc^1^
+date: ^1^Centre for Evidence-Based Orthopedics, Department of Orthopedic Surgery, Zealand University Hospital Køge
+output:
+  word_document:
+    reference_docx: template.docx
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+options(scipen = 1, digits = 2)
+```
+
+```{r, include=FALSE}
+source(here::here("DOS abstract", "calcs.R"))
+```
+
+
+# Introduction
+Magnetic resonance imaging (MRI) is the primary image modality for diagnosing soft tissue knee injuries.
+Correct interpretation of knee MRI can be time-consuming. 
+Deep learning assisted diagnosis in knee MRI has shown potential for improving diagnostic speed and accuracy, but the results have been inconsistent. 
+Recent advances in deep learning methods have resulted in improvements in both performance and interpretation for other medical image diagnosis tasks. 
+We aim to study these advances and develop a deep learning model capable of diagnosing anterior cruciate ligament (ACL) and meniscal tears in knee MRI. 
+
+# Methods
+We used the MRNet dataset consisting of 1250 knee MRI scans from Stanford University Medical Center.
+Each case has been labeled with the presence or absence of an ACL tear and/or meniscal tear as diagnosed by a radiologist. 
+The dataset is split into a training set (1130 cases) and a validation set (120 cases). 
+We developed a deep learning model based on the EfficientNet architecture and trained it on the training set. 
+The trained model was then used to diagnose the scans in the validation set.
+Using the diagnostic labels as gold-standard we calculated the sensitivity and specificity.
+We calculated the area under the receiver operating characteristic curve (ROC) as an overall measure of performance.
+Lastly, we used Gradient-weighted Class Activation Mapping to visualize which regions of each scan the model used for diagnosis.
+
+# Results
+The model achieved ROC (95% CI) values of `r aucs$acl[2]` (`r aucs$acl[1]` - `r aucs$acl[3]`) for ACL tears and `r aucs$men[2]` (`r aucs$men[1]` - `r aucs$men[3]`) for meniscal tears.
+The average ROC was `r (aucs$acl[2] + aucs$men[2]) / 2`, the currently highest reported for the MRNet dataset.
+The  sensitivity (95% CI) was `r sens$acl[1]` (`r sens$acl[2]` - `r sens$acl[3]`) for ACL tears and `r sens$men[1]` (`r sens$men[2]` - `r sens$men[3]`) for meniscal tears. 
+The specificity (95 CI) was `r spec$acl[1]` (`r spec$acl[2]` - `r spec$acl[3]`) for ACL tears and `r spec$men[1]` (`r spec$men[2]` - `r spec$men[3]`) for meniscal tears . 
+The sensitivity and specificity is comparable to previously reported values achieved by trained radiologists on the MRNet dataset.
+
+
+# Conclusions
+Our findings indicate that deep learning has the potential to aid radiologists and orthopedic surgeons when diagnosing ACL and meniscal tears in knee MRI.
