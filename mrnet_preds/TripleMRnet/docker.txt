@@ -1,5 +1,0 @@
-docker run -it -v  $PWD:/app anibali/pytorch@sha256:96fe4ea6eb56ad1d257a3dbdf5b710bb7df497f4d32e5cf4be984436b7774d6d python src/submit_predictions.py valid-paths.csv predictions.csv
-
-
-
-docker run -it --gpus all -v  $PWD:/app anibali/pytorch@sha256:96fe4ea6eb56ad1d257a3dbdf5b710bb7df497f4d32e5cf4be984436b7774d6d python src/submit_predictions.py valid-paths.csv predictions.csv

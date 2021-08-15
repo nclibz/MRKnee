@@ -11,6 +11,8 @@ error_analysis.ods
 models/
 preds/
 submit_test/
+mrnet_comp models/
+
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,jupyternotebooks,vscode
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,python,jupyternotebooks,vscode
