@@ -73,9 +73,25 @@ class MRKnee(pl.LightningModule):
             )
             self.clf = nn.Linear(lstm_h_size, 1)
 
+        ### GradCAM
+        self.gradients = None
+
+    def activations_hook(self, grad):
+        self.gradients = grad
+
+    def get_activations_gradient(self):
+        return self.gradients
+
+    def get_activations(self, x):
+        return self.features_conv(x)
+
+        ## GRADCAM END
+
     def forward(self, x):
         x = [self.run_model(model, series) for model, series in zip(self.backbones, x)]
         x = torch.cat(x, 1)
+        # GRADCAM HOOK
+        h = x.register_hook(self.activations_hook)
         x = self.final_drop(x)
         x = self.clf(x)
         return x

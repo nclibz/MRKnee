@@ -20,8 +20,8 @@ device = "cpu"
 
 
 model = MRKnee.load_from_checkpoint(ckpt, planes=[plane], backbone=backbone)
-model.eval()
 model.to(device=device)
+
 
 # %%
 # INPUT
@@ -67,12 +67,36 @@ elif plane == "coronal":
     MEAN, SD = 61.9277, 64.2818
 imgs = (imgs - MEAN) / SD
 imgs = imgs.unsqueeze(1)  # create channel dim
+imgs = imgs.unsqueeze(0)
 imgs = imgs.to(device=device)
+
+
+# %%
+
+model.backbones[-1][10]
+# %%
+
+# a dict to store the activations
+activation = {}
+
+
+def getActivation(name):
+    # the hook signature
+    def hook(model, input, output):
+        activation[name] = output.detach()
+
+    return hook
+
+
+h1 = model.backbones[-1][10].register_forward_hook(getActivation("2dconv"))
+
+model.eval()
+res = model(imgs)
 
 # %%
 def model_wrapper(input_batch):  # nx1x240x240
     print(input_batch.shape)
-    input_batch = input_batch.unsqueeze(0)  # create batch dim
+    # create batch dim
     print(input_batch.shape)
     res = model(input_batch)
     print(res.size)
@@ -107,7 +131,7 @@ from captum.attr import visualization as viz
 # use case for GuidedGradCAM.
 
 
-guided_gc = GuidedGradCam(model, model.backbones[-1][9])
+guided_gc = GuidedGradCam(model, model.backbones[-1][10])
 
 
 # Computes guided GradCAM attributions for class.
@@ -123,3 +147,7 @@ _ = viz.visualize_image_attr(
     method="blended_heat_map",
     alpha_overlay=0.6,
 )
+
+# %%
+model.backbones[-1][11]
+# %%
