@@ -75,7 +75,7 @@ imgs = imgs.to(device=device)
 
 model.backbones[-1][10]
 # %%
-
+## JEG TROR DET ER DEN HER DER VIRKER
 # a dict to store the activations
 activation = {}
 

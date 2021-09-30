@@ -4,8 +4,8 @@ import optuna
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from model import MRKnee
-from data import MRKneeDataModule
+from src.model import MRKnee
+from src.data import MRKneeDataModule
 import albumentations as A
 from pytorch_lightning import Callback
 pl.seed_everything(123)
@@ -14,7 +14,6 @@ pl.seed_everything(123)
 # %%
 %load_ext autoreload
 %autoreload 2
-
 
 # %%
 class MetricsCallback(Callback):
@@ -27,16 +26,15 @@ class MetricsCallback(Callback):
         self.metrics.append(trainer.callback_metrics)
 # %%
 
-
 def objective(trial):
 
-    IMG_SZ = 224  # b0 = 224, b1 = 240,
+    IMG_SZ = 224  # b0 = 224, b1 = 240, # få den fra model
 
     cfg = {
         # DATA
         'datadir': 'data',
         'diagnosis': 'meniscus',
-        'planes': ['axial'],  # , 'sagittal', 'coronal', 'axial',
+        'plane': "axial",
         'n_chans': 1,
         'num_workers': 4,
         'pin_memory': True,
@@ -54,12 +52,9 @@ def objective(trial):
         'pretrained': True,
         'learning_rate': trial.suggest_loguniform('lr', 1e-6, 1e-2),
         'drop_rate': trial.suggest_float('dropout', 0., 0.8),
-        'freeze_from': -1,
-        'unfreeze_epoch': 0,
         'log_auc': True,
         'log_ind_loss': False,
         'final_pool': 'max',
-        'lstm_pool': False,
         # Trainer
         'precision': 16,
         'max_epochs': 5,
@@ -110,8 +105,6 @@ def objective(trial):
     return metrics_callback.metrics[-1]["val_loss"].item()
 
 # %%
-
-# hvis jeg skal bruge hyperband skal jeg kunne rapportere metrics imens jeg trainer?
 
 
 pruner = optuna.pruners.MedianPruner()

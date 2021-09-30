@@ -3,112 +3,89 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
 import numpy as np
-import csv
+import pandas as pd
 from torch.utils.data.sampler import WeightedRandomSampler
-from utils import do_aug
-# %%
-
-
-def get_exclusions(stage, plane):
-    e = {'train':
-         {'sagittal': ['3', '275', '544', '582', '665', '776', '795', '864', '1043'],
-          'axial': ['665', '1043'],
-          'coronal': ['310', '544', '610', ' 665', '1010', '1043']
-          },
-
-         'valid':
-         {'sagittal': ['1159', '1230'],
-          'axial': ['1136'],
-          'coronal': []
-          }
-         }
-    return e[stage][plane]
 
 
 # %%
+
+
+# %%
+
 
 class MRDS(Dataset):
-    def __init__(self, datadir,
-                 stage,
-                 diagnosis,
-                 transf=None,
-                 planes=['axial', 'sagittal', 'coronal'],
-                 n_chans=1,
-                 indp_normalz=True,
-                 w_loss=True,
-                 same_range=True,
-                 clean=True):
+    def __init__(
+        self,
+        datadir,
+        stage,
+        diagnosis,
+        transforms,
+        plane,
+        clean,
+    ):
         super().__init__()
         self.stage = stage
         self.datadir = datadir
-        self.planes = planes
-        self.n_chans = n_chans
-        self.transf = transf
+        self.plane = plane
+        self.transforms = transforms.set_transforms(stage, plane)
         self.diagnosis = diagnosis
-        self.indp_normalz = indp_normalz
-        self.w_loss = w_loss
-        self.same_range = same_range
 
         # get list of exclusions
+
+        exclusions = {
+            "train": {
+                "sagittal": [
+                    "0003",
+                    "0275",
+                    "0544",
+                    "0582",
+                    "0665",
+                    "0776",
+                    "0795",
+                    "0864",
+                    "1043",
+                ],
+                "axial": ["0665", "1043"],
+                "coronal": ["0310", "0544", "0610", "0665", "1010", "1043"],
+            },
+            "valid": {"sagittal": ["1159", "1230"], "axial": ["1136"], "coronal": []},
+        }
+
         if clean:
-            exclude = get_exclusions(stage, planes[0])
+            exclude = exclusions[stage][plane]
         else:
             exclude = []
 
         # get cases
-        with open(f'{datadir}/{stage}-{diagnosis}.csv', "r") as f:
-            self.cases = [(row[0], int(row[1]))
-                          for row in list(csv.reader(f)) if row[0] not in exclude]  # inefficient
+        path = f"{datadir}/{stage}-{diagnosis}.csv"
+        self.cases = pd.read_csv(
+            path, header=None, names=["id", "lbl"], dtype={"id": str, "lbl": np.int64}
+        )
+        if stage == "train" and exclude:
+            self.cases = self.cases[~self.cases["id"].isin(exclude)]
 
-        if w_loss:
-            lbls = [lbl for _, lbl in self.cases]
-            pos_count = np.sum(lbls)
-            neg_count = len(lbls) - pos_count
-            self.weight = torch.as_tensor(
-                neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
+        lbls = self.cases[["lbl"]].to_numpy()
+        pos_count = np.sum(lbls)
+        neg_count = len(lbls) - pos_count
+        self.weight = torch.as_tensor(neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
 
-    def __getitem__(self, index):
+    def __getitem__(self, idx):
 
-        id, label = self.cases[index]
+        row = self.cases.iloc[idx, :]
+        label = row["lbl"]
+        id = row["id"]
+        path = f"{self.datadir}/{self.stage}/{self.plane}/{id}.npy"
+        imgs = np.load(path)
 
-        imgs = [self.prep_imgs(id, plane)
-                for plane in self.planes]
+        imgs = self.transforms(imgs, plane=self.plane, stage=self.stage)
+
+        imgs = torch.as_tensor(imgs, dtype=torch.float32)
+
+        imgs = imgs.unsqueeze(1)  # add channel
 
         label = torch.as_tensor(label, dtype=torch.float32).unsqueeze(0)
 
         return imgs, label, id, self.weight
-
-    def prep_imgs(self, id, plane):
-        path = f'{self.datadir}/{self.stage}/{plane}/{id}.npy'
-        imgs = np.load(path)
-
-        if self.transf:
-            imgs = do_aug(imgs, self.transf[self.stage])
-
-        imgs = torch.as_tensor(imgs, dtype=torch.float32)
-
-        if self.same_range:
-            imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
-
-        # normalize
-        if self.indp_normalz:
-            if plane == 'axial':
-                MEAN, SD = 66.4869, 60.8146
-            elif plane == 'sagittal':
-                MEAN, SD = 60.0440, 48.3106
-            elif plane == 'coronal':
-                MEAN, SD = 61.9277, 64.2818
-        else:
-            MEAN, SD = 58.09, 49.73
-
-        imgs = (imgs - MEAN)/SD
-
-        if self.n_chans == 1:
-            imgs = imgs.unsqueeze(1)
-        else:
-            imgs = torch.stack((imgs,)*3, axis=1)
-
-        return imgs
 
     def __len__(self):
         return len(self.cases)
@@ -116,78 +93,50 @@ class MRDS(Dataset):
 
 # %%
 
-class MRKneeDataModule(pl.LightningDataModule):
 
-    def __init__(self,
-                 datadir,
-                 diagnosis,
-                 transf=None,
-                 planes=['axial', 'sagittal', 'coronal'],
-                 upsample=False,
-                 n_chans=1,
-                 w_loss=True,
-                 indp_normalz=False,
-                 num_workers=1,
-                 pin_memory=True,
-                 same_range=True,
-                 clean=True,
-                 ** kwargs):
+class MRKneeDataModule(pl.LightningDataModule):
+    def __init__(
+        self, datadir, diagnosis, transforms, plane, clean, num_workers=1, pin_memory=True
+    ):
         super().__init__()
-        self.upsample = upsample
-        self.w_loss = w_loss
-        self.indp_normalz = indp_normalz
+
         self.num_workers = num_workers
         self.pin_memory = pin_memory
-        self.same_range = same_range
 
-        assert(self.upsample != self.w_loss)
-
-        self.train_ds = MRDS(datadir,
-                             'train',
-                             diagnosis,
-                             transf,
-                             planes,
-                             n_chans,
-                             w_loss=w_loss,
-                             indp_normalz=self.indp_normalz,
-                             same_range=self.same_range,
-                             clean=clean)
-        self.val_ds = MRDS(datadir,
-                           'valid',
-                           diagnosis,
-                           transf,
-                           planes,
-                           n_chans,
-                           w_loss=w_loss,
-                           indp_normalz=self.indp_normalz,
-                           same_range=self.same_range,
-                           clean=clean)
-        if self.upsample:
-            lbls = [lbl for _, lbl in self.train_ds.cases]
-            class_counts = np.bincount(lbls)
-            class_weights = 1 / torch.Tensor(class_counts)
-            samples_weight = [class_weights[t] for t in lbls]
-            self.sampler = WeightedRandomSampler(samples_weight, 1)
+        self.train_ds = MRDS(
+            datadir,
+            "train",
+            diagnosis,
+            transforms,
+            plane,
+            clean=clean,
+        )
+        self.val_ds = MRDS(
+            datadir,
+            "valid",
+            diagnosis,
+            transforms,
+            plane,
+            clean=clean,
+        )
 
     def train_dataloader(self):
-        if self.upsample:
-            trainloader = DataLoader(self.train_ds, batch_size=1,
-                                     sampler=self.sampler,
-                                     num_workers=self.num_workers,
-                                     pin_memory=self.pin_memory)
-        else:
-            trainloader = DataLoader(self.train_ds, batch_size=1,
-                                     shuffle=True,
-                                     num_workers=self.num_workers,
-                                     pin_memory=self.pin_memory)
-
-        return trainloader
+        return DataLoader(
+            self.train_ds,
+            batch_size=1,
+            shuffle=True,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=1,
-                          shuffle=False,
-                          num_workers=self.num_workers,
-                          pin_memory=self.pin_memory)
+        return DataLoader(
+            self.val_ds,
+            batch_size=1,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+        )
 
 
 # %%
