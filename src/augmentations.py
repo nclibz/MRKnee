@@ -2,6 +2,7 @@ import albumentations as A
 from numpy.random import default_rng
 import numpy as np
 
+# TODO: Set interpolation og border mode for shiftscalerotate
 
 class Augmentations:
     def __init__(

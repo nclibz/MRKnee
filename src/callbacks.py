@@ -21,16 +21,17 @@ class MetricsCallback(Callback):
 
 
 class Callbacks:
-    def __init__(self, cfg, trial):
+    def __init__(self, cfg, trial, neptune_name: str):
         self.cfg = cfg
         self.trial = trial
+        self.neptune_name = neptune_name
 
     def get_neptune_logger(self):
 
         self.neptune_logger = NeptuneLogger(
             api_key="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiNDI5ODUwMzQtOTM0Mi00YTY2LWExYWQtMDNlZDZhY2NlYjUzIn0=",
             params=self.cfg,
-            project_name="nclibz/baseline",
+            project_name="nclibz/" + self.neptune_name,
             tags=[self.cfg["diagnosis"], self.cfg["plane"]],
         )
         return self.neptune_logger
@@ -45,7 +46,7 @@ class Callbacks:
             save_top_k=3,
             monitor="val_loss",
             mode="min",
-            period=1,
+            every_n_epochs=1,
             save_weights_only=True,
         )
 

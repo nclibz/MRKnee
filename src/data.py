@@ -22,6 +22,7 @@ class MRDS(Dataset):
         transforms,
         plane,
         clean,
+        trim,
     ):
         super().__init__()
         self.stage = stage
@@ -29,6 +30,7 @@ class MRDS(Dataset):
         self.plane = plane
         self.transforms = transforms.set_transforms(stage, plane)
         self.diagnosis = diagnosis
+        self.trim = trim
 
         # get list of exclusions
 
@@ -69,6 +71,10 @@ class MRDS(Dataset):
         neg_count = len(lbls) - pos_count
         self.weight = torch.as_tensor(neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
 
+    def trim_imgs(self, imgs):
+        remove_n = imgs.shape[0] // 10
+        return imgs[remove_n:-remove_n, :, :]
+
     def __getitem__(self, idx):
 
         row = self.cases.iloc[idx, :]
@@ -77,10 +83,12 @@ class MRDS(Dataset):
         path = f"{self.datadir}/{self.stage}/{self.plane}/{id}.npy"
         imgs = np.load(path)
 
+        if self.trim:
+            imgs = self.trim_imgs(imgs)
+
         imgs = self.transforms(imgs, plane=self.plane, stage=self.stage)
 
-        imgs = torch.as_tensor(imgs, dtype=torch.float32)
-
+        imgs = torch.from_numpy(imgs).float()
         imgs = imgs.unsqueeze(1)  # add channel
 
         label = torch.as_tensor(label, dtype=torch.float32).unsqueeze(0)
@@ -96,28 +104,44 @@ class MRDS(Dataset):
 
 class MRKneeDataModule(pl.LightningDataModule):
     def __init__(
-        self, datadir, diagnosis, transforms, plane, clean, num_workers=1, pin_memory=True
+        self,
+        datadir,
+        diagnosis,
+        transforms,
+        plane,
+        clean,
+        trim_train,
+        num_workers=1,
+        pin_memory=True,
     ):
         super().__init__()
-
+        self.diagnosis = diagnosis
+        self.transforms = transforms
+        self.datadir = datadir
+        self.plane = plane
+        self.clean = clean
+        self.trim_train = trim_train
         self.num_workers = num_workers
         self.pin_memory = pin_memory
 
         self.train_ds = MRDS(
-            datadir,
+            self.datadir,
             "train",
-            diagnosis,
-            transforms,
-            plane,
-            clean=clean,
+            self.diagnosis,
+            self.transforms,
+            self.plane,
+            clean=self.clean,
+            trim=self.trim_train,
         )
+
         self.val_ds = MRDS(
-            datadir,
+            self.datadir,
             "valid",
-            diagnosis,
-            transforms,
-            plane,
-            clean=clean,
+            self.diagnosis,
+            self.transforms,
+            self.plane,
+            clean=self.clean,
+            trim=False,
         )
 
     def train_dataloader(self):

@@ -1,5 +1,4 @@
 # %%
-from pytorch_lightning import callbacks
 from src.model import MRKnee
 from src.data import MRKneeDataModule
 from src.augmentations import Augmentations
@@ -13,13 +12,11 @@ pl.seed_everything(123)
 
 DIAGNOSIS = "acl"
 PLANE = "sagittal"
-BACKBONE = "efficientnet_b0"
-
+BACKBONE = "tf_mobilenetv3_small_minimal_100"
+DATADIR = "data"
 
 # %%
-
-
-def objective(trial, diagnosis=DIAGNOSIS, plane=PLANE, backbone=BACKBONE):
+def objective(trial, diagnosis=DIAGNOSIS, plane=PLANE, backbone=BACKBONE, datadir=DATADIR):
 
     model = MRKnee(
         backbone=backbone,
@@ -28,7 +25,6 @@ def objective(trial, diagnosis=DIAGNOSIS, plane=PLANE, backbone=BACKBONE):
         learning_rate=0.0001,
         log_auc=True,
         log_ind_loss=False,
-        final_pool="max",
         adam_wd=0.01,
         max_epochs=20,
         precision=32,
@@ -45,23 +41,23 @@ def objective(trial, diagnosis=DIAGNOSIS, plane=PLANE, backbone=BACKBONE):
     )
 
     dm = MRKneeDataModule(
-        datadir="data",
+        datadir=datadir,
         diagnosis=diagnosis,
         plane=plane,
         transforms=augs,
         clean=True,
         num_workers=1,
         pin_memory=True,
+        trim_train=True,
     )
 
+    # TODO: Lave cfg class?
     cfg = dict()
     cfg.update(model.__dict__)
     cfg.update(augs.__dict__)
     cfg.update(dm.__dict__)
 
-    # TODO: Create callback class
-
-    callbacks = Callbacks(cfg, trial)
+    callbacks = Callbacks(cfg, trial, neptune_name="tester")
 
     trainer = pl.Trainer(
         gpus=1,
@@ -93,6 +89,7 @@ storage = optuna.storages.RDBStorage(
     grace_period=360,
 )
 study_name = f"{DIAGNOSIS}_{PLANE}_{BACKBONE}"
+
 study = optuna.create_study(
     storage=storage,
     study_name=study_name,
@@ -114,3 +111,5 @@ study = optuna.create_study(
 # %%
 
 study.optimize(objective, n_trials=40, timeout=8 * 60 * 60)
+
+# %%
