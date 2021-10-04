@@ -98,9 +98,11 @@ class MRKnee(pl.LightningModule):
 
     def on_validation_epoch_end(self):
         if self.log_auc:
+            preds = torch.cat(self.preds)
+            lbls = torch.cat(self.lbl).to(dtype=torch.int32)
             self.log(
                 "val_auc",
-                auroc(torch.cat(self.preds), torch.cat(self.lbl), pos_label=1),
+                auroc(preds, lbls, pos_label=1),
                 prog_bar=True,
                 on_epoch=True,
             )
