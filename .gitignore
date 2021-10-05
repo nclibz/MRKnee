@@ -1,9 +1,7 @@
 
 ### MISC ###
 data/
-logs/
 testing.py
-todo
 error_analysis.txt
 error_analysis.ods
 *.csv
