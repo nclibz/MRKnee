@@ -1,6 +1,7 @@
 
 ### MISC ###
 data/
+*.json
 testing.py
 error_analysis.txt
 error_analysis.ods
