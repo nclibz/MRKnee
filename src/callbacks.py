@@ -56,7 +56,7 @@ class Callbacks:
 
         self.prune_callback = PyTorchLightningPruningCallback(self.trial, monitor="val_loss")
 
-        return [self.model_checkpoint, self.prune_callback, self.lr_monitor, self.metrics_callback]
+        return [self.model_checkpoint, self.prune_callback, self.lr_monitor]
 
     def upload_best_checkpoints(self):
         self.neptune_logger.experiment.set_property(
