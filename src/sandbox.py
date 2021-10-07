@@ -53,7 +53,6 @@ dm = MRKneeDataModule(
     trim_train=True,
 )
 
-# TODO: Lave cfg class?
 cfg = dict()
 cfg.update(model.__dict__)
 cfg.update(augs.__dict__)
