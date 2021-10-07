@@ -9,15 +9,15 @@ from pytorch_lightning import Callback
 # %%
 
 
-class MetricsCallback(Callback):
-    """PyTorch Lightning metric callback."""
+# class MetricsCallback(Callback):
+#     """PyTorch Lightning metric callback."""
 
-    def __init__(self):
-        super().__init__()
-        self.metrics = []
+#     def __init__(self):
+#         super().__init__()
+#         self.metrics = []
 
-    def on_validation_end(self, trainer, pl_module):
-        self.metrics.append(trainer.callback_metrics)
+#     def on_validation_end(self, trainer, pl_module):
+#         self.metrics.append(trainer.callback_metrics)
 
 
 class Callbacks:
@@ -52,7 +52,7 @@ class Callbacks:
 
         self.lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
-        self.metrics_callback = MetricsCallback()
+        # self.metrics_callback = MetricsCallback()
 
         self.prune_callback = PyTorchLightningPruningCallback(self.trial, monitor="val_loss")
 
