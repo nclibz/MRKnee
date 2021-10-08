@@ -13,12 +13,41 @@ import torch.nn.functional as F
 
 import pandas as pd
 
+#%%
+import optuna
+
+from src.study import Study
+
 
 diagnosis = "acl"
 plane = "sagittal"
 backbone = "efficientnet_b0"
 
 
+# %%
+
+study = Study("acl", "axial", "effnet", 2)
+
+
+# %%
+
+
+studies = optuna.study.get_all_study_summaries(storage=study.storage)
+
+
+#%%
+
+study_names = [study.study_name for study in studies]
+
+#%%
+
+optuna.delete_study(
+    study_name="acl_sagittal_tf_mobilenetv3_small_minimal_100", storage=study.storage
+)
+
+# %%
+
+[optuna.delete_study(study_name=name, storage=study.storage) for name in study_names[1:]]
 # %%
 model = MRKnee(
     backbone=backbone,
