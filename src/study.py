@@ -23,5 +23,5 @@ class Study:
     def enqueue(self, dict):
         self.study.enqueue_trial(dict)
 
-    def optimize(self, objective, n_trials, timeout=8 * 60 * 60):
-        self.study.optimize(objective, n_trials=n_trials, timeout=timeout)
+    def optimize(self, objective, n_trials):
+        self.study.optimize(objective, n_trials=n_trials)
