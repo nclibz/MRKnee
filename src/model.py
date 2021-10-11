@@ -15,7 +15,6 @@ class MRKnee(pl.LightningModule):
         self,
         backbone,
         drop_rate,
-        global_pool,
         learning_rate,
         adam_wd,
         precision,
@@ -29,7 +28,6 @@ class MRKnee(pl.LightningModule):
         self.log_auc = log_auc
         self.log_ind_loss = log_ind_loss
         self.drop_rate = drop_rate
-        self.global_pool = global_pool
         self.architecture = backbone
         self.adam_wd = adam_wd
         self.max_epochs = max_epochs
@@ -39,7 +37,6 @@ class MRKnee(pl.LightningModule):
             num_classes=0,
             in_chans=1,
             drop_rate=self.drop_rate,
-            global_pool=self.global_pool,
         )
         self.num_features = self.backbone.num_features
         self.clf = nn.Linear(self.num_features, 1)
@@ -47,6 +44,9 @@ class MRKnee(pl.LightningModule):
     def forward(self, x):
         x = torch.squeeze(x, dim=0)  # -> (num_imgs, c, h, w)
         x = self.backbone(x)  # -> (num_imgs, num_features)
+        x = x.unsqueeze(0)  # (1, num_imgs, num_features)
+        x = F.adaptive_max_pool2d(x, (1, x.size(-1)))
+        x = x.squeeze(0)  # (1, num_features_out)
         x = self.clf(x)
         return x
 

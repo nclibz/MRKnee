@@ -11,6 +11,7 @@ models/
 preds/
 submit_test/
 mrnet_comp models/
+sandbox/
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,python,jupyternotebooks,vscode
