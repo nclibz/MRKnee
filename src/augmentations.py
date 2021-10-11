@@ -2,8 +2,6 @@ import albumentations as A
 from numpy.random import default_rng
 import numpy as np
 
-# TODO: Set interpolation og border mode for shiftscalerotate
-
 
 class Augmentations:
     def __init__(
@@ -15,8 +13,10 @@ class Augmentations:
         reverse_p=0.5,
         indp_normalz=True,
     ):
-        self.input_size = model.backbone.default_cfg["input_size"]
-        self.test_input_size = model.backbone.default_cfg.get("test_input_size", self.input_size)
+        self.backbone_in = model.backbone.default_cfg["input_size"][-1]
+        self.backbone_test_in = model.backbone.default_cfg.get("test_input_size", self.backbone_in)
+        self.input_size = 256 if self.backbone_in > 256 else self.backbone_in
+        self.test_input_size = 256 if self.backbone_test_in > 256 else self.backbone_test_in
         self.shift_limit = shift_limit
         self.scale_limit = scale_limit
         self.rotate_limit = rotate_limit
@@ -28,7 +28,6 @@ class Augmentations:
         transforms = []
 
         if stage == "train":
-
             transforms.append(
                 A.ShiftScaleRotate(
                     always_apply=False,
@@ -36,21 +35,18 @@ class Augmentations:
                     shift_limit=self.shift_limit,
                     scale_limit=self.scale_limit,
                     rotate_limit=self.rotate_limit,
+                    border_mode=0,
+                    value=(0, 0, 0),
                 )
             )
 
             if plane != "sagittal":
                 transforms.append(A.HorizontalFlip(p=0.5))
 
-            transforms.append(A.CenterCrop(self.input_size[1], self.input_size[2]))
+            transforms.append(A.CenterCrop(self.input_size, self.input_size))
 
         else:
-            if self.test_input_size[1] > 256:
-                test_input = 256
-            else:
-                test_input = self.test_input_size[1]
-
-            transforms.append(A.CenterCrop(test_input, test_input))
+            transforms.append(A.CenterCrop(self.test_input_size, self.test_input_size))
 
         self.transforms = A.Compose(transforms)
 
@@ -75,10 +71,8 @@ class Augmentations:
 
     def reverse_order(self, imgs):
         p = self.rng.random()
-
         if p < self.reverse_p:
             imgs = np.flipud(imgs)
-
         return imgs
 
     def standardize(self, imgs, plane):
