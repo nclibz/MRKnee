@@ -29,6 +29,7 @@ class MRKnee(pl.LightningModule):
         self.log_auc = log_auc
         self.log_ind_loss = log_ind_loss
         self.drop_rate = drop_rate
+        self.final_drop = final_drop
         self.architecture = backbone
 
         self.backbone = timm.create_model(
