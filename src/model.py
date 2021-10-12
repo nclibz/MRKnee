@@ -1,6 +1,7 @@
 # %%
 import pytorch_lightning as pl
-from torchmetrics.functional.classification import auroc
+from torch.nn.modules.module import T
+from torchmetrics import AUROC
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -40,6 +41,7 @@ class MRKnee(pl.LightningModule):
         )
         self.num_features = self.backbone.num_features
         self.clf = nn.Linear(self.num_features, 1)
+        self.val_auc = AUROC(compute_on_step=False)
 
     def forward(self, x):
         x = torch.squeeze(x, dim=0)  # -> (num_imgs, c, h, w)
@@ -64,11 +66,11 @@ class MRKnee(pl.LightningModule):
         logit = self(imgs)
         loss = F.binary_cross_entropy_with_logits(logit, label, pos_weight=weight)
 
-        # logging
+        self.val_auc(torch.sigmoid(logit).squeeze(0), label.squeeze(0).to(dtype=torch.long))
+
+        self.log("val_auc", self.val_auc, on_epoch=True, on_step=False, prog_bar=True)
+
         self.log("val_loss", loss, prog_bar=True, on_epoch=True, on_step=False)
-        if self.log_auc:
-            self.preds.append(torch.sigmoid(logit).squeeze(0))
-            self.lbl.append(label.squeeze(0))
         return loss
 
     def configure_optimizers(self):
@@ -83,22 +85,6 @@ class MRKnee(pl.LightningModule):
             ),
             "monitor": "val_loss",
         }
-
-    def on_validation_epoch_start(self):
-        if self.log_auc:
-            self.preds = []
-            self.lbl = []
-
-    def on_validation_epoch_end(self):
-        if self.log_auc:
-            preds = torch.cat(self.preds)
-            lbls = torch.cat(self.lbl).to(dtype=torch.int32)
-            self.log(
-                "val_auc",
-                auroc(preds, lbls, pos_label=1),
-                prog_bar=True,
-                on_epoch=True,
-            )
 
 
 # %%
