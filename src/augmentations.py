@@ -10,12 +10,18 @@ class Augmentations:
         shift_limit,
         scale_limit,
         rotate_limit,
+        max_res_train,
         reverse_p=0.5,
         indp_normalz=True,
     ):
         self.backbone_in = model.backbone.default_cfg["input_size"]
         self.backbone_test_in = model.backbone.default_cfg.get("test_input_size", self.backbone_in)
-        self.input_size = 256 if self.backbone_in[-1] > 256 else self.backbone_in[-1]
+        self.max_res_train = max_res_train
+        self.input_size = (
+            self.max_res_train
+            if self.backbone_in[-1] > self.max_res_train
+            else self.backbone_in[-1]
+        )
         self.test_input_size = (
             256 if self.backbone_test_in[-1] > 256 else self.backbone_test_in[-1]
         )
