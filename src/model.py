@@ -73,6 +73,12 @@ class MRKnee(pl.LightningModule):
         self.log("val_loss", loss, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
+    def predict_step(self, batch, batchidx):
+        imgs, label, sample_id, weight = batch
+        logit = self(imgs)
+        preds = torch.sigmoid(logit), label
+        return preds
+
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
             self.parameters(), lr=self.learning_rate, weight_decay=self.adam_wd

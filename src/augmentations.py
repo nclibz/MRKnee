@@ -1,18 +1,19 @@
 import albumentations as A
 from numpy.random import default_rng
 import numpy as np
+from typing import Any
 
 
 class Augmentations:
     def __init__(
         self,
-        model,
-        shift_limit,
-        scale_limit,
-        rotate_limit,
-        max_res_train,
-        reverse_p=0.5,
-        indp_normalz=True,
+        model: Any,
+        shift_limit: float,
+        scale_limit: float,
+        rotate_limit: float,
+        max_res_train: int,
+        reverse_p: float = 0.5,
+        indp_normalz: bool = True,
     ):
         self.backbone_in = model.backbone.default_cfg["input_size"]
         self.backbone_test_in = model.backbone.default_cfg.get("test_input_size", self.backbone_in)
