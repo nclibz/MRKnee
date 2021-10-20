@@ -2,10 +2,12 @@ import optuna
 
 
 class Study:
-    def __init__(self, diagnosis: str, plane: str, backbone: str, n_warmup_steps: int) -> None:
+    def __init__(
+        self, diagnosis: str, plane: str, backbone: str, n_warmup_steps: int, threshold: float
+    ) -> None:
         self.study_name = f"{diagnosis}_{plane}_{backbone}"
         self.pruner = optuna.pruners.ThresholdPruner(
-            lower=None, upper=0.8, n_warmup_steps=n_warmup_steps, interval_steps=1
+            lower=None, upper=threshold, n_warmup_steps=n_warmup_steps, interval_steps=1
         )
         self.sampler = optuna.samplers.TPESampler(multivariate=True)
         self.storage = optuna.storages.RDBStorage(
