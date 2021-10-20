@@ -2,9 +2,11 @@ import optuna
 
 
 class Study:
-    def __init__(self, diagnosis: str, plane: str, backbone: str, min_epochs: int) -> None:
+    def __init__(self, diagnosis: str, plane: str, backbone: str, n_warmup_steps: int) -> None:
         self.study_name = f"{diagnosis}_{plane}_{backbone}"
-        self.pruner = optuna.pruners.HyperbandPruner(min_resource=min_epochs)
+        self.pruner = optuna.pruners.ThresholdPruner(
+            lower=None, upper=0.8, n_warmup_steps=n_warmup_steps, interval_steps=1
+        )
         self.sampler = optuna.samplers.TPESampler(multivariate=True)
         self.storage = optuna.storages.RDBStorage(
             url="mysql+pymysql://admin:Testuser1234@database-1.c17p2riuxscm.us-east-2.rds.amazonaws.com/optuna",
