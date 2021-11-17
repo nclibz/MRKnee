@@ -2,22 +2,10 @@
 from pytorch_lightning.loggers.neptune import NeptuneLogger
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
-from optuna.integration import PyTorchLightningPruningCallback
-from pytorch_lightning import Callback
+from optuna.integration.pytorch_lightning import PyTorchLightningPruningCallback
 
 
 # %%
-
-
-# class MetricsCallback(Callback):
-#     """PyTorch Lightning metric callback."""
-
-#     def __init__(self):
-#         super().__init__()
-#         self.metrics = []
-
-#     def on_validation_end(self, trainer, pl_module):
-#         self.metrics.append(trainer.callback_metrics)
 
 
 class Callbacks:
@@ -33,6 +21,7 @@ class Callbacks:
             params=self.cfg,
             project_name="nclibz/" + self.neptune_name,
             tags=[self.cfg["diagnosis"], self.cfg["plane"]],
+            log_model_checkpoints=True,
         )
         return self.neptune_logger
 
@@ -43,7 +32,7 @@ class Callbacks:
             dirpath=f"checkpoints/trial{self.trial.number}/",
             filename="{epoch:02d}-{val_loss:.2f}-{val_auc:.2f}",
             verbose=True,
-            save_top_k=3,
+            save_top_k=2,
             monitor="val_loss",
             mode="min",
             every_n_epochs=1,
@@ -58,11 +47,11 @@ class Callbacks:
 
         return [self.model_checkpoint, self.prune_callback, self.lr_monitor]
 
-    def upload_best_checkpoints(self):
-        self.neptune_logger.experiment.set_property(
-            "best_val_loss", self.model_checkpoint.best_model_score.tolist()
-        )
+    # def upload_best_checkpoints(self):
+    #     self.neptune_logger.experiment.set_property(
+    #         "best_val_loss", self.model_checkpoint.best_model_score.tolist()
+    #     )
 
-        for k in self.model_checkpoint.best_k_models.keys():
-            model_name = "checkpoints/" + k.split("/")[-1]
-            self.neptune_logger.experiment.log_artifact(k, model_name)
+    #     for k in self.model_checkpoint.best_k_models.keys():
+    #         model_name = "checkpoints/" + k.split("/")[-1]
+    #         self.neptune_logger.experiment.log_artifact(k, model_name)
