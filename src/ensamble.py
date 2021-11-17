@@ -6,6 +6,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.exceptions import NotFittedError
 from sklearn.metrics import roc_auc_score, confusion_matrix
 import pandas as pd
+from joblib import dump
 
 
 class Ensamble:
@@ -64,6 +65,11 @@ class Ensamble:
             index=[0],
         )
         return metrics
+
+    def dump_model(self, fname: str = None):
+        fname = fname if fname is not None else self.diagnosis
+
+        dump(self.clf, f"out/models/{fname}.joblib")
 
     def __repr__(self) -> str:
         return f"Ensamble({self.diagnosis}, {self.backbone}, {str(self.clf)})"

@@ -34,3 +34,5 @@ trained_ensambles = [ensamble.evaluate() for ensamble in ensambles]
 metric_dfs = [ensamble.get_metrics() for ensamble in trained_ensambles]
 
 all_metrics = pd.concat(metric_dfs)
+
+all_metrics.to_csv("out/best_model.csv")
