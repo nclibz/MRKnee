@@ -18,11 +18,13 @@ class Callbacks:
 
         self.neptune_logger = NeptuneLogger(
             api_key="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vdWkubmVwdHVuZS5haSIsImFwaV91cmwiOiJodHRwczovL3VpLm5lcHR1bmUuYWkiLCJhcGlfa2V5IjoiNDI5ODUwMzQtOTM0Mi00YTY2LWExYWQtMDNlZDZhY2NlYjUzIn0=",
-            params=self.cfg,
-            project_name="nclibz/" + self.neptune_name,
+            project="nclibz/" + self.neptune_name,
             tags=[self.cfg["diagnosis"], self.cfg["plane"]],
             log_model_checkpoints=True,
         )
+
+        self.neptune_logger.log_hyperparams(params=self.cfg)
+
         return self.neptune_logger
 
     def get_callbacks(self):
