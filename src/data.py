@@ -113,6 +113,7 @@ class MRKneeDataModule(pl.LightningDataModule):
         trim_train,
         num_workers=1,
         pin_memory=True,
+        shuffle_train=True,
     ):
         super().__init__()
         self.diagnosis = diagnosis
@@ -123,6 +124,7 @@ class MRKneeDataModule(pl.LightningDataModule):
         self.trim_train = trim_train
         self.num_workers = num_workers
         self.pin_memory = pin_memory
+        self.shuffle_train = shuffle_train
 
         self.train_ds = MRDS(
             self.datadir,
@@ -148,7 +150,7 @@ class MRKneeDataModule(pl.LightningDataModule):
         return DataLoader(
             self.train_ds,
             batch_size=1,
-            shuffle=True,
+            shuffle=self.shuffle_train,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
         )
