@@ -29,3 +29,11 @@ class Study:
 
     def optimize(self, objective, n_trials):
         self.study.optimize(objective, n_trials=n_trials)
+
+    def get_study_names(self):
+        self.studies = optuna.study.get_all_study_summaries(storage=self.storage)
+        self.study_names = [study.study_name for study in self.studies]
+        return self.study_names
+
+    def delete_study(self, name):
+        optuna.delete_study(study_name=name, storage=self.storage)
