@@ -18,7 +18,7 @@ def show_batch(imgs, from_dl=False):
 
     fig = plt.figure(figsize=(30, 30))
     n_imgs = imgs.shape[0]
-    n_rows = np.ceil(n_imgs / 6)
+    n_rows = int(np.ceil(n_imgs / 6))
     for i in range(n_imgs):
         fig.add_subplot(n_rows, 6, i + 1)
         plt.imshow(imgs[i, :, :], cmap="gray")

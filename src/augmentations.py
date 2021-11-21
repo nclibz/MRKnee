@@ -11,6 +11,7 @@ class Augmentations:
         shift_limit: float,
         scale_limit: float,
         rotate_limit: float,
+        clahe: bool,
         max_res_train: int,
         reverse_p: float = 0.5,
         indp_normalz: bool = True,
@@ -29,6 +30,7 @@ class Augmentations:
         self.shift_limit = shift_limit
         self.scale_limit = scale_limit
         self.rotate_limit = rotate_limit
+        self.clahe = clahe
         self.reverse_p = reverse_p
         self.indp_normalz = indp_normalz
         self.rng = default_rng()
@@ -40,7 +42,7 @@ class Augmentations:
             transforms.append(
                 A.ShiftScaleRotate(
                     always_apply=False,
-                    p=1.0,
+                    p=0.5,
                     shift_limit=self.shift_limit,
                     scale_limit=self.scale_limit,
                     rotate_limit=self.rotate_limit,
@@ -48,13 +50,15 @@ class Augmentations:
                     value=(0, 0, 0),
                 )
             )
+            if self.clahe:
+                A.CLAHE()
 
             if plane != "sagittal":
                 transforms.append(A.HorizontalFlip(p=0.5))
 
             transforms.append(A.CenterCrop(self.input_size, self.input_size))
 
-        else:
+        elif stage == "valid":
             transforms.append(A.CenterCrop(self.test_input_size, self.test_input_size))
 
         self.transforms = A.Compose(transforms)
@@ -85,11 +89,6 @@ class Augmentations:
         return imgs
 
     def standardize(self, imgs, plane):
-
-        # Rescal range to be between 0 and 255
-        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
-
-        # normalize
         if self.indp_normalz:
             if plane == "axial":
                 MEAN, SD = 66.4869, 60.8146
@@ -104,7 +103,10 @@ class Augmentations:
 
     def __call__(self, imgs, plane, stage):
 
-        # apply albumentations
+        # Rescale intensities to range between 0 and 255
+        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+        imgs = imgs.astype(np.uint8)
+
         res = self.apply_transforms(imgs)
 
         # apply reverse ordering for saggital
