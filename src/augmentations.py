@@ -11,7 +11,9 @@ class Augmentations:
         shift_limit: float,
         scale_limit: float,
         rotate_limit: float,
+        ssr_p: float,
         clahe: bool,
+        clahe_valid: bool,
         max_res_train: int,
         reverse_p: float = 0.5,
         indp_normalz: bool = True,
@@ -31,8 +33,10 @@ class Augmentations:
         self.scale_limit = scale_limit
         self.rotate_limit = rotate_limit
         self.clahe = clahe
+        self.clahe_valid = clahe_valid
         self.reverse_p = reverse_p
         self.indp_normalz = indp_normalz
+        self.ssr_p = ssr_p
         self.rng = default_rng()
 
     def set_transforms(self, stage, plane):
@@ -51,7 +55,7 @@ class Augmentations:
                 )
             )
             if self.clahe:
-                A.CLAHE()
+                transforms.append(A.CLAHE())
 
             if plane != "sagittal":
                 transforms.append(A.HorizontalFlip(p=0.5))
@@ -59,6 +63,10 @@ class Augmentations:
             transforms.append(A.CenterCrop(self.input_size, self.input_size))
 
         elif stage == "valid":
+
+            if self.clahe_valid:
+                transforms.append(A.CLAHE())
+
             transforms.append(A.CenterCrop(self.test_input_size, self.test_input_size))
 
         self.transforms = A.Compose(transforms)
