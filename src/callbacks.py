@@ -13,6 +13,8 @@ class Callbacks:
         self.cfg = cfg
         self.trial = trial
         self.neptune_name = neptune_name
+        self.neptune_logger = None
+        self.model_checkpoint = None
 
     def get_neptune_logger(self):
 
