@@ -2,23 +2,27 @@
 from src.ensamble import Ensamble
 import pandas as pd
 
+
+# %%
+models_dir = "src/models/"
+model_name = "baseline"
 # %%
 acl_chkpts = {
-    "axial": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
-    "sagittal": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
-    "coronal": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
+    "axial": models_dir + model_name + "/acl_axial.ckpt",
+    "sagittal": models_dir + model_name + "/acl_sagittal.ckpt",
+    "coronal": models_dir + model_name + "/acl_coronal.ckpt",
 }
 
 men_chkpts = {
-    "axial": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
-    "sagittal": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
-    "coronal": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
+    "axial": models_dir + model_name + "/meniscus_axial.ckpt",
+    "sagittal": models_dir + model_name + "/meniscus_sagittal.ckpt",
+    "coronal": models_dir + model_name + "/meniscus_coronal.ckpt",
 }
 
 abn_chkpts = {
-    "axial": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
-    "sagittal": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
-    "coronal": "src/models/ensamble_test/epoch=04-val_loss=0.27-val_auc=0.96.ckpt",
+    "axial": models_dir + model_name + "/abnormal_axial.ckpt",
+    "sagittal": models_dir + model_name + "/abnormal_sagittal.ckpt",
+    "coronal": models_dir + model_name + "/abnormal_coronal.ckpt",
 }
 
 all_checkpoints = {"acl": acl_chkpts, "men": men_chkpts, "abn": abn_chkpts}

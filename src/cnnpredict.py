@@ -47,6 +47,8 @@ class CNNPredict:
             scale_limit=0,
             rotate_limit=0,
             reverse_p=0.0,
+            ssr_p=1,
+            clahe_p=1,
             indp_normalz=True,
         )
 
