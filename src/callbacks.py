@@ -40,7 +40,7 @@ class Callbacks:
             monitor="val_loss",
             mode="min",
             every_n_epochs=1,
-            save_weights_only=False,
+            save_weights_only=True,
         )
 
         self.lr_monitor = LearningRateMonitor(logging_interval="epoch")

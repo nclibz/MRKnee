@@ -8,7 +8,7 @@ from src.augmentations import Augmentations
 from src.data import MRKneeDataModule
 from src.model import MRKnee
 from sklearn.metrics import roc_auc_score
-
+from tqdm import tqdm
 
 # %%
 
@@ -29,7 +29,12 @@ class CNNPredict:
         self.backbone = backbone
         self.device = device
         self.datadir = datadir
-        self.model = MRKnee.load_from_checkpoint(
+        self.preds = []
+        self.lbls = []
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    def get_preds(self, stage):
+        model = MRKnee.load_from_checkpoint(
             self.checkpoint,
             backbone=self.backbone,
             drop_rate=0.5,
@@ -40,27 +45,26 @@ class CNNPredict:
             log_auc=False,
             log_ind_loss=False,
         )
-        self.augs = Augmentations(
-            self.model,
+        # TODO: Har slået clean fra. Ellers får jeg forskellige længde af preds
+        # TODO: Slå trim train fra??
+
+        augs = Augmentations(
+            model,
             max_res_train=256,
             shift_limit=0,
             scale_limit=0,
             rotate_limit=0,
             reverse_p=0.0,
-            ssr_p=1,
-            clahe_p=1,
+            ssr_p=0.,
+            clahe_p=0.,
             indp_normalz=True,
         )
-
-    def get_preds(self, stage):
-
-        # TODO: Har slået clean fra. Ellers får jeg forskellige længde af preds
 
         dm = MRKneeDataModule(
             datadir=self.datadir,
             diagnosis=self.diagnosis,
             plane=self.plane,
-            transforms=self.augs,
+            transforms=augs,
             clean=False,
             num_workers=2,
             pin_memory=True,
@@ -72,9 +76,14 @@ class CNNPredict:
             dl = dm.train_dataloader()
         else:
             dl = dm.val_dataloader()
-        trainer = pl.Trainer(gpus=1)
-
-        preds_and_lbls = trainer.predict(self.model, dl)
+        preds_and_lbls = []
+        model.to(self.device)
+        model.eval()
+        with torch.no_grad():
+            for batch in tqdm(iter(dl)):
+                imgs, label = batch[0].to(self.device), batch[1].to(self.device)
+                logit = model(imgs)
+                preds_and_lbls.append((torch.sigmoid(logit), label))
         self.preds = torch.tensor([pred for pred, lbl in preds_and_lbls]).cpu().numpy()
         self.lbls = torch.tensor([lbl for pred, lbl in preds_and_lbls]).cpu().unsqueeze(1).numpy()
         return self

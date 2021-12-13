@@ -2,7 +2,6 @@
 from src.ensamble import Ensamble
 import pandas as pd
 
-
 # %%
 models_dir = "src/models/"
 model_name = "baseline"
@@ -25,18 +24,21 @@ abn_chkpts = {
     "coronal": models_dir + model_name + "/abnormal_coronal.ckpt",
 }
 
-all_checkpoints = {"acl": acl_chkpts, "men": men_chkpts, "abn": abn_chkpts}
+all_checkpoints = {"acl": acl_chkpts, "meniscus": men_chkpts, "abnormal": abn_chkpts}
 
 
 # %%
-
 ensambles = [Ensamble(diagnosis, chkpts) for diagnosis, chkpts in all_checkpoints.items()]
-
-trained_ensambles = [ensamble.evaluate() for ensamble in ensambles]
+# %%
+for ensamble in ensambles:
+    ensamble.evaluate()
 # %%
 
-metric_dfs = [ensamble.get_metrics() for ensamble in trained_ensambles]
+metric_dfs = [ensamble.get_metrics() for ensamble in ensambles]
+
 
 all_metrics = pd.concat(metric_dfs)
 
-all_metrics.to_csv("out/best_model.csv")
+all_metrics.to_csv("out/metrics/" + model_name + ".csv")
+
+# %%

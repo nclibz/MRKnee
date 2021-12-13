@@ -34,25 +34,15 @@ class Ensamble:
 
         X = np.stack([predictor.preds for predictor in predictors], axis=1)
 
-        y = predictors[0].lbls
+        y = predictors[0].lbls.ravel()
         return X, y
 
-    def train(self):
-        if self.X_train is None:
-            self.X_train, self.y_train = self.get_data("train")
-        self.clf.fit(self.X_train, self.y_train)
-
     def evaluate(self):
-
-        if self.X_val is None:
-            self.X_val, self.y_val = self.get_data("valid")
-
-        try:
-            self.probas = self.clf.predict_proba(self.X_val)
-        except NotFittedError:
-            self.train()
-            self.probas = self.clf.predict_proba(self.X_val)
-
+        print(f"Evaluating: {self.diagnosis}")
+        self.X_train, self.y_train = self.get_data("train")
+        self.clf.fit(self.X_train, self.y_train)
+        self.X_val, self.y_val = self.get_data("valid")
+        self.probas = self.clf.predict_proba(self.X_val)
         self.preds = np.argmax(self.probas, axis=-1)
         self.auc = roc_auc_score(self.y_val, self.probas[:, 1])
         tn, fp, fn, tp = confusion_matrix(self.y_val, self.preds).ravel()
