@@ -105,7 +105,7 @@ class Augmentations:
 
     def __call__(self, imgs, plane, stage):
 
-        # Rescale intensities to range between 0 and 255
+        # Rescale intensities to range between 0 and 255 -> tror ikke den gør noget!
         imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
         imgs = imgs.astype(np.uint8)
 

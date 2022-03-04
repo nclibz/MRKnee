@@ -1,11 +1,9 @@
 # %%
-import torch
-from torch.utils.data import Dataset, DataLoader
-import pytorch_lightning as pl
 import numpy as np
 import pandas as pd
-from torch.utils.data.sampler import WeightedRandomSampler
-
+import pytorch_lightning as pl
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 # %%
 
