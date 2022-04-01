@@ -25,19 +25,15 @@ class CNNPredict:
     def __init__(
         self,
         model,
-        augs,
         dataloader,
-        device: str = "cuda",
     ) -> None:
         self.model = model
-        self.augs = augs
         self.dl = dataloader
-        self.device = device
         self.preds = []
         self.lbls = []
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    def get_preds(self):
+    def make_preds(self):
         """Calculate predictions from CNN"""
         preds_and_lbls = []
         self.model.to(self.device)
@@ -49,6 +45,11 @@ class CNNPredict:
                 preds_and_lbls.append((torch.sigmoid(logit), label))
         self.preds = torch.tensor([pred for pred, _ in preds_and_lbls]).cpu().numpy()
         self.lbls = torch.tensor([lbl for _, lbl in preds_and_lbls]).cpu().numpy()
+
+    def get_preds(self):
+        if not self.preds:
+            self.make_preds()
+        return self.preds, self.lbls
 
     def get_auc(self):
         self.fpr, self.tpr, self.thresholds = metrics.roc_curve(self.lbls, self.preds)

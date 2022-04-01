@@ -6,14 +6,71 @@ from torch.utils.data import DataLoader
 
 from src.augmentations import Augmentations
 from src.cnnpredict import CNNPredict
-from src.data import KneeMRI, MRNetDataModule, SkmTea, OAI
+from src.data import KneeMRI, MRNetDataModule, SkmTea, OAI, MRNet
+from src.ensamble import Ensamble
 from src.model import MRKnee
+
+
+# %% LOAD MODELS
+
+diagnosis = "acl"
+PLANES = ["sagittal", "coronal", "axial"]
+
+
+acl_predictors_train = []
+
+for plane in PLANES:
+    model = MRKnee.load_from_checkpoint(
+        f"src/models/v3/{diagnosis}_{plane}.ckpt",
+        backbone="tf_efficientnetv2_s_in21k",
+        drop_rate=0.5,
+        learning_rate=1e-4,
+        adam_wd=0.001,
+        max_epochs=20,
+        precision=32,
+        log_auc=False,
+        log_ind_loss=False,
+    )
+
+    TRAIN_IMGSIZE, TEST_IMGSIZE = model.get_train_test_imgsize()
+
+    augs = Augmentations(
+        train_imgsize=(256, 256),
+        test_imgsize=(256, 256),
+        shift_limit=0.2,
+        scale_limit=0.2,
+        rotate_limit=0.2,
+        ssr_p=0.2,
+        clahe_p=0.2,
+        reverse_p=0.0,
+        indp_normalz=True,
+    )
+
+    ds = MRNet(
+        datadir="data/mrnet",
+        stage="train",
+        diagnosis=diagnosis,
+        plane="sagittal",
+        clean=False,
+        trim=False,
+        transforms=augs,
+    )
+
+    dl = DataLoader(
+        ds,
+        batch_size=1,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+    )
+
+    acl_predictors_train.append(CNNPredict(model, dl))
+
 
 # %%
 ### INTERNAL VALIDATION OF ENSAMBLE
-
-# TODO: fix ensamble class after above changes
-
+acl_ensamble = Ensamble()
+acl_ensamble.train(acl_predictors_train)
 
 # %%
 acl_sag_model = MRKnee.load_from_checkpoint(

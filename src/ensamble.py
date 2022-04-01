@@ -1,72 +1,64 @@
 # %%
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-from joblib import dump
+from joblib import dump, load
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, roc_auc_score
 
 from src.cnnpredict import CNNPredict
 
-# TODO: Skift så den tager en list af instantiated CNNpredicts
-
 
 class Ensamble:
     def __init__(
         self,
-        diagnosis,
-        chkpts: Dict[str, str],
-        backbone: str = "tf_efficientnetv2_s_in21k",
         clf=LogisticRegression(),
     ) -> None:
-        self.diagnosis = diagnosis
-        self.chkpts = chkpts
-        self.backbone = backbone
         self.clf = clf
         self.X_train = None
         self.y_train = None
         self.X_val = None
         self.y_val = None
 
-    def get_data(self, stage: str):
-        predictors = [
-            CNNPredict(self.diagnosis, plane, path, self.backbone, "data").get_preds(stage)
-            for plane, path in self.chkpts.items()
-        ]
+    def get_data(self, predictors: List[CNNPredict]):
+        predictors = [predictor.get_preds() for predictor in predictors]
 
         X = np.stack([predictor.preds for predictor in predictors], axis=1)
 
         y = predictors[0].lbls.ravel()
         return X, y
 
-    def evaluate(self):
-        print(f"Evaluating: {self.diagnosis}")
-        self.X_train, self.y_train = self.get_data("train")
+    def train(self, predictors):
+        self.X_train, self.y_train = self.get_data(predictors)
         self.clf.fit(self.X_train, self.y_train)
-        self.X_val, self.y_val = self.get_data("valid")
+
+    def validate(self, predictors):
+        self.X_val, self.y_val = self.get_data(predictors)
         self.probas = self.clf.predict_proba(self.X_val)
         self.preds = np.argmax(self.probas, axis=-1)
+
+    def get_metrics(self):
         self.auc = roc_auc_score(self.y_val, self.probas[:, 1])
         tn, fp, fn, tp = confusion_matrix(self.y_val, self.preds).ravel()
         self.spec = tn / (tn + fp)
         self.sens = tp / (tp + fn)
-
-    def get_metrics(self):
         metrics = pd.DataFrame(
-            {"diagnosis": self.diagnosis, "sens": self.sens, "spec": self.spec, "auc": self.auc},
+            {
+                "sens": self.sens,
+                "spec": self.spec,
+                "auc": self.auc,
+            },
             index=[0],
         )
         return metrics
 
-    def dump_model(self, fname: str = None):
-        fname = fname if fname is not None else self.diagnosis
-
+    def dump_model(self, fname: str):
         dump(self.clf, f"out/models/{fname}.joblib")
 
-    def __repr__(self) -> str:
-        return f"Ensamble({self.diagnosis}, {self.backbone}, {str(self.clf)})"
+    def load_model(self, path: str):
+        self.clf = load(path)
 
 
 # %%
