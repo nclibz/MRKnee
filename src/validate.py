@@ -28,6 +28,19 @@ acl_sag_model = MRKnee.load_from_checkpoint(
     log_ind_loss=False,
 )
 
+acl_cor_model = MRKnee.load_from_checkpoint(
+    "src/models/v3/acl_coronal.ckpt",
+    backbone="tf_efficientnetv2_s_in21k",
+    drop_rate=0.5,
+    learning_rate=1e-4,
+    adam_wd=0.001,
+    max_epochs=20,
+    precision=32,
+    log_auc=False,
+    log_ind_loss=False,
+)
+
+
 men_sag_model = MRKnee.load_from_checkpoint(
     "src/models/v3/meniscus_sagittal.ckpt",
     backbone="tf_efficientnetv2_s_in21k",
@@ -203,6 +216,7 @@ oai_men_cor = OAI(
     trim=True,
     trim_p=0.10,
     transforms=augs,
+    imgs_in_ram=False,
 )
 
 oai_men_cor_dl = DataLoader(
@@ -218,7 +232,7 @@ oai_men_cor_preds.get_preds()
 oai_men_cor_preds.plot_roc()
 
 # %%
-## MENISCUS SAG
+## OAI MENISCUS SAG
 
 oai_men_sag = OAI(
     datadir="data/oai",
@@ -245,7 +259,7 @@ oai_men_sag_preds.plot_roc()
 # %%
 
 # %%
-## ACL
+## ACL SAG
 
 oai_acl_sag = OAI(
     datadir="data/oai",
@@ -270,6 +284,32 @@ oai_acl_sag_preds = CNNPredict(acl_sag_model, augs, oai_acl_sag_dl)
 
 # %%
 oai_acl_sag_preds.get_preds()
-# %%
 oai_acl_sag_preds.plot_roc()
+# %%
+
+oai_acl_cor = OAI(
+    datadir="data/oai",
+    stage="valid",
+    diagnosis="acl",
+    plane="coronal",
+    clean=False,
+    trim=True,
+    trim_p=0.10,
+    transforms=augs,
+)
+
+oai_acl_cor_dl = DataLoader(
+    oai_acl_cor,
+    batch_size=1,
+    shuffle=False,
+    num_workers=4,
+    pin_memory=True,
+)
+
+oai_acl_cor_preds = CNNPredict(acl_cor_model, augs, oai_acl_cor_dl)
+
+# %%
+oai_acl_cor_preds.get_preds()
+oai_acl_cor_preds.plot_roc()
+
 # %%

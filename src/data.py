@@ -26,6 +26,7 @@ class DS(ABC, Dataset):
         trim,
         trim_p=0.10,
         transforms=None,
+        imgs_in_ram=False,
     ) -> None:
         self.stage = stage
         self.datadir = datadir
@@ -40,7 +41,8 @@ class DS(ABC, Dataset):
         self.ids = None
         self.lbls = None
         self.weight = None
-        self.image_dir = None
+        self.img_dir = None
+        self.imgs_in_ram = imgs_in_ram
 
     @abstractmethod
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
@@ -58,13 +60,20 @@ class DS(ABC, Dataset):
         neg_count = len(lbls) - pos_count
         return torch.as_tensor(neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
 
+    def load_npy_img(self, img_dir, id):
+        """loads npy img"""
+        path = os.path.join(img_dir, id + ".npy")
+        imgs = np.load(path)
+        return imgs
+
     def __getitem__(self, idx):
-        id = self.ids[idx]
         label = self.lbls[idx]
         label = torch.as_tensor(label, dtype=torch.float32).unsqueeze(0)
-
-        path = os.path.join(self.img_dir, id + ".npy")
-        imgs = np.load(path)
+        id = self.ids[idx]
+        if self.imgs_in_ram:  # if imgs are already loaded in ram
+            imgs = id
+        else:
+            imgs = self.load_npy_img(self.img_dir, id)
 
         if self.trim:
             imgs = self.trim_imgs(imgs, self.trim_p)
@@ -193,8 +202,11 @@ class OAI(DS):
         cases = cases.assign(
             img_id=cases.id.astype(str) + "_" + cases.side + "_" + cases.plane
         )
-        ids = cases["img_id"].to_list()
         lbls = cases[self.diagnosis].to_list()
+        ids = cases["img_id"].to_list()
+
+        if self.imgs_in_ram:
+            ids = [self.load_npy_img(self.img_dir, id) for id in ids]
 
         return ids, lbls
 
