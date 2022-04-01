@@ -1,33 +1,29 @@
-import albumentations as A
-from numpy.random import default_rng
-import numpy as np
 from typing import Any
+
+import albumentations as A
+import numpy as np
+from numpy.random import default_rng
+
+# TODO: Skal gøre så test size kan justeres
 
 
 class Augmentations:
+    """docstring"""
+
     def __init__(
         self,
-        model: Any,
+        train_imgsize,
+        test_imgsize,
         shift_limit: float,
         scale_limit: float,
         rotate_limit: float,
         ssr_p: float,
         clahe_p: float,
-        max_res_train: int,
         reverse_p: float = 0.5,
         indp_normalz: bool = True,
     ):
-        self.backbone_in = model.backbone.default_cfg["input_size"]
-        self.backbone_test_in = model.backbone.default_cfg.get("test_input_size", self.backbone_in)
-        self.max_res_train = max_res_train
-        self.input_size = (
-            self.max_res_train
-            if self.backbone_in[-1] > self.max_res_train
-            else self.backbone_in[-1]
-        )
-        self.test_input_size = (
-            256 if self.backbone_test_in[-1] > 256 else self.backbone_test_in[-1]
-        )
+        self.train_imgsize = train_imgsize
+        self.test_imgsize = test_imgsize
         self.shift_limit = shift_limit
         self.scale_limit = scale_limit
         self.rotate_limit = rotate_limit
@@ -58,10 +54,10 @@ class Augmentations:
             if plane != "sagittal":
                 transforms.append(A.HorizontalFlip(p=0.5))
 
-            transforms.append(A.CenterCrop(self.input_size, self.input_size))
+            transforms.append(A.CenterCrop(self.train_imgsize[0], self.train_imgsize[1]))
 
         elif stage == "valid":
-            transforms.append(A.CenterCrop(self.test_input_size, self.test_input_size))
+            transforms.append(A.CenterCrop(self.test_imgsize[0], self.test_imgsize[1]))
 
         self.transforms = A.Compose(transforms)
 

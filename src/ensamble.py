@@ -1,12 +1,16 @@
 # %%
 from typing import Dict
-from src.cnnpredict import CNNPredict
+
 import numpy as np
-from sklearn.linear_model import LogisticRegression
-from sklearn.exceptions import NotFittedError
-from sklearn.metrics import roc_auc_score, confusion_matrix
 import pandas as pd
 from joblib import dump
+from sklearn.exceptions import NotFittedError
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, roc_auc_score
+
+from src.cnnpredict import CNNPredict
+
+# TODO: Skift så den tager en list af instantiated CNNpredicts
 
 
 class Ensamble:

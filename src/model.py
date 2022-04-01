@@ -1,12 +1,11 @@
 # %%
 import pytorch_lightning as pl
-from torch.nn.modules.module import T
-from torchmetrics import AUROC
+import timm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import timm
-
+from torch.nn.modules.module import T
+from torchmetrics import AUROC
 
 # %%
 
@@ -91,6 +90,11 @@ class MRKnee(pl.LightningModule):
             ),
             "monitor": "val_loss",
         }
+
+    def get_train_test_imgsize(self):
+        train_size = self.backbone.default_cfg["input_size"][1:]  # (3, H, W) -> (H,W)
+        test_size = self.backbone.default_cfg.get("test_input_size", train_size)[1:]
+        return train_size, test_size
 
 
 # %%
