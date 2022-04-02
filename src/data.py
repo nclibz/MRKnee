@@ -9,8 +9,12 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
+from typing import Any
 
-# TODO: Skulle næsten have augmentations direkte i dataset?
+import albumentations as A
+import numpy as np
+from numpy.random import default_rng
+
 
 # %%
 class DS(ABC, Dataset):
@@ -24,16 +28,19 @@ class DS(ABC, Dataset):
         plane,
         clean,
         trim,
+        shift_limit: float,
+        scale_limit: float,
+        rotate_limit: float,
+        ssr_p: float,
+        clahe_p: float,
+        indp_normalz: bool = True,
         trim_p=0.10,
-        transforms=None,
         imgs_in_ram=False,
+        no_augments=False,
     ) -> None:
         self.stage = stage
         self.datadir = datadir
         self.plane = plane
-        self.transforms = (
-            transforms.set_transforms(stage, plane) if transforms else None
-        )
         self.diagnosis = diagnosis
         self.trim = trim
         self.trim_p = trim_p
@@ -43,11 +50,82 @@ class DS(ABC, Dataset):
         self.weight = None
         self.img_dir = None
         self.imgs_in_ram = imgs_in_ram
+        self.train_imgsize = None
+        self.test_imgsize = None
+        self.shift_limit = shift_limit
+        self.scale_limit = scale_limit
+        self.rotate_limit = rotate_limit
+        self.clahe_p = clahe_p
+        self.indp_normalz = indp_normalz
+        self.ssr_p = ssr_p
+        self.transforms = None
+        self.no_augments = no_augments
 
     @abstractmethod
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         """Read metadata and return tuple with list of ids and lbls"""
         pass
+
+    def set_transforms(self, stage, plane):
+        transforms = []
+
+        if stage == "train" and not self.no_augments:
+            transforms.append(
+                A.ShiftScaleRotate(
+                    always_apply=False,
+                    p=self.ssr_p,
+                    shift_limit=self.shift_limit,
+                    scale_limit=self.scale_limit,
+                    rotate_limit=self.rotate_limit,
+                    border_mode=0,
+                    value=(0, 0, 0),
+                )
+            )
+
+            transforms.append(A.CLAHE(p=self.clahe_p))
+
+            if plane != "sagittal":
+                transforms.append(A.HorizontalFlip(p=0.5))
+
+            transforms.append(
+                A.CenterCrop(self.train_imgsize[0], self.train_imgsize[1])
+            )
+
+        elif stage == "valid":
+            transforms.append(A.CenterCrop(self.test_imgsize[0], self.test_imgsize[1]))
+
+        transforms = A.Compose(transforms)
+        return transforms
+
+    def apply_transforms(self, imgs):
+        img_dict = {}
+        target_dict = {}
+        for i in range(imgs.shape[0]):
+            if i == 0:
+                img_dict["image"] = imgs[i, :, :]
+            else:
+                img_name = "image" + f"{i}"
+                img_dict[img_name] = imgs[i, :, :]
+                target_dict[img_name] = "image"
+        transf = self.transforms
+        transf.add_targets(target_dict)
+        out = transf(**img_dict)
+        out = list(out.values())
+
+        return np.array(out)
+
+    def standardize(self, imgs):
+        if self.indp_normalz:
+            if self.plane == "axial":
+                MEAN, SD = 66.4869, 60.8146
+            elif self.plane == "sagittal":
+                MEAN, SD = 60.0440, 48.3106
+            elif self.plane == "coronal":
+                MEAN, SD = 61.9277, 64.2818
+        else:
+            MEAN, SD = 58.09, 49.73
+
+        return (imgs - MEAN) / SD
 
     def trim_imgs(self, imgs, trim_p):
         """trims first and last 10% imgs"""
@@ -78,8 +156,13 @@ class DS(ABC, Dataset):
         if self.trim:
             imgs = self.trim_imgs(imgs, self.trim_p)
 
-        if self.transforms:
-            imgs = self.transforms(imgs, plane=self.plane, stage=self.stage)
+        # Rescale intensities to range between 0 and 255 -> tror ikke den gør noget!
+        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+        imgs = imgs.astype(np.uint8)
+
+        res = self.apply_transforms(imgs)
+
+        res = self.standardize(imgs=res)
 
         imgs = torch.from_numpy(imgs).float()
         imgs = imgs.unsqueeze(1)  # add channel
@@ -97,6 +180,9 @@ class MRNet(DS):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.img_dir = os.path.join(self.datadir, self.stage, self.plane)
+        self.train_imgsize = (256, 256)
+        self.test_imgsize = (256, 256)
+        self.transforms = self.set_transforms(self.stage, self.plane)
 
         exclude = {
             "train": {
@@ -151,6 +237,13 @@ class KneeMRI(DS):
         path_metadata = os.path.join(self.datadir, "metadata.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
+        # TODO: Kan bruge 320 men nogle få er 288 -> Ekskludere?
+        self.train_imgsize = (
+            288,
+            288,
+        )
+        self.test_imgsize = (288, 288)
+        self.transforms = self.set_transforms(self.stage, self.plane)
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)
@@ -172,6 +265,9 @@ class SkmTea(DS):
         path_metadata = os.path.join(self.datadir, "targets.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
+        self.train_imgsize = (320, 320)
+        self.test_imgsize = (320, 320)
+        self.transforms = self.set_transforms(self.stage, self.plane)
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)
@@ -190,6 +286,9 @@ class OAI(DS):
         path_metadata = os.path.join(self.datadir, "targets.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
+        self.train_imgsize = (320, 320)
+        self.test_imgsize = (320, 320)
+        self.transforms = self.set_transforms(self.stage, self.plane)
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)
@@ -209,11 +308,6 @@ class OAI(DS):
             ids = [self.load_npy_img(self.img_dir, id) for id in ids]
 
         return ids, lbls
-
-
-# %%
-
-###
 
 
 # %%

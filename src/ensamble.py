@@ -9,6 +9,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, roc_auc_score
 
 from src.cnnpredict import CNNPredict
+from src.model import MRKnee
+from torch.utils.data import DataLoader
 
 
 class Ensamble:
@@ -23,7 +25,7 @@ class Ensamble:
         self.y_val = None
 
     def get_data(self, predictors: List[CNNPredict]):
-        predictors = [predictor.get_preds() for predictor in predictors]
+        predictors = [predictor.make_preds() for predictor in predictors]
 
         X = np.stack([predictor.preds for predictor in predictors], axis=1)
 
@@ -62,3 +64,50 @@ class Ensamble:
 
 
 # %%
+
+
+def collect_predictors(
+    diagnosis: str, planes: List[str], stage: str, datadir: str, ds_class
+):
+
+    predictors = []
+
+    for plane in planes:
+        model = MRKnee.load_from_checkpoint(
+            f"src/models/v3/{diagnosis}_{plane}.ckpt",
+            backbone="tf_efficientnetv2_s_in21k",
+            drop_rate=0.5,
+            learning_rate=1e-4,
+            adam_wd=0.001,
+            max_epochs=20,
+            precision=32,
+            log_auc=False,
+            log_ind_loss=False,
+        )
+
+        ds = ds_class(
+            datadir=datadir,
+            stage=stage,
+            diagnosis=diagnosis,
+            plane=plane,
+            clean=False,
+            trim=False,
+            shift_limit=0.2,
+            scale_limit=0.2,
+            rotate_limit=0.2,
+            ssr_p=0.2,
+            clahe_p=0.2,
+            indp_normalz=True,
+            no_augments=True,
+        )
+
+        dl = DataLoader(
+            ds,
+            batch_size=1,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=True,
+        )
+
+        predictors.append(CNNPredict(model, dl))
+    return predictors

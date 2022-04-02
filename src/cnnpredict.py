@@ -2,21 +2,13 @@
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import pytorch_lightning as pl
 import torch
 from sklearn import metrics
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
 
-from src.augmentations import Augmentations
-from src.data import MRNetDataModule
-from src.model import MRKnee
 
 # %%
-# TODO: Pass in classes instead of instantiating inside CNNPredict
-# Bliver jeg nød til for at kunne bruge andre datamodules
 
 
 class CNNPredict:
@@ -45,6 +37,7 @@ class CNNPredict:
                 preds_and_lbls.append((torch.sigmoid(logit), label))
         self.preds = torch.tensor([pred for pred, _ in preds_and_lbls]).cpu().numpy()
         self.lbls = torch.tensor([lbl for _, lbl in preds_and_lbls]).cpu().numpy()
+        return self
 
     def get_preds(self):
         if not self.preds:
@@ -53,7 +46,8 @@ class CNNPredict:
 
     def get_auc(self):
         self.fpr, self.tpr, self.thresholds = metrics.roc_curve(self.lbls, self.preds)
-        return metrics.auc(self.fpr, self.tpr)
+        auc = metrics.auc(self.fpr, self.tpr)
+        return auc
 
     def plot_roc(self):
         roc_auc = self.get_auc()
