@@ -26,16 +26,15 @@ class DS(ABC, Dataset):
 
     def __init__(
         self,
-        datadir,
         stage,
         diagnosis,
         plane,
         clean,
         transforms,
         imgs_in_ram=False,
+        datadir=None,
     ) -> None:
         self.stage = stage
-        self.datadir = datadir
         self.plane = plane
         self.diagnosis = diagnosis
         self.clean = clean
@@ -46,6 +45,7 @@ class DS(ABC, Dataset):
         self.imgs_in_ram = imgs_in_ram
         self.train_imgsize = None
         self.test_imgsize = None
+        self.datadir = datadir
         self.transforms = transforms.set_transforms(stage, plane)
 
     @abstractmethod
@@ -95,6 +95,7 @@ class MRNet(DS):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.datadir = self.datadir if self.datadir else "data/mrnet"
         self.img_dir = os.path.join(self.datadir, self.stage, self.plane)
 
         exclude = {
@@ -150,7 +151,7 @@ class KneeMRI(DS):
         path_metadata = os.path.join(self.datadir, "metadata.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
-        # TODO: Kan bruge 320 men nogle få er 288 -> Ekskludere?
+        self.datadir = self.datadir if self.datadir else "data/kneemri"
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)
@@ -172,6 +173,7 @@ class SkmTea(DS):
         path_metadata = os.path.join(self.datadir, "targets.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
+        self.datadir = self.datadir if self.datadir else "data/skm-tea"
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)
@@ -190,6 +192,7 @@ class OAI(DS):
         path_metadata = os.path.join(self.datadir, "targets.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
+        self.datadir = self.datadir if self.datadir else "data/oai"
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)

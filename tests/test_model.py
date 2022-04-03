@@ -9,7 +9,6 @@ from torch.utils.data import DataLoader
 from src.model import MRKnee
 from sklearn.metrics import roc_auc_score
 
-# %%
 
 # %%
 
@@ -46,7 +45,6 @@ model = MRKnee.load_from_checkpoint(
 augs = Augmentations(train_imgsize=(256, 256), test_imgsize=(256, 256))
 
 ds = MRNet(
-    datadir="data/mrnet",
     stage="valid",
     diagnosis="acl",
     plane="sagittal",

@@ -45,7 +45,8 @@ class CNNPredict:
         return self.preds, self.lbls
 
     def get_auc(self):
-        self.fpr, self.tpr, self.thresholds = metrics.roc_curve(self.lbls, self.preds)
+        preds, lbls = self.get_preds()
+        self.fpr, self.tpr, self.thresholds = metrics.roc_curve(lbls, preds)
         auc = metrics.auc(self.fpr, self.tpr)
         return auc
 
