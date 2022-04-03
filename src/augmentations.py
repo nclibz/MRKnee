@@ -14,12 +14,13 @@ class Augmentations:
         self,
         train_imgsize,
         test_imgsize,
-        shift_limit: float,
-        scale_limit: float,
-        rotate_limit: float,
-        ssr_p: float,
-        clahe_p: float,
-        reverse_p: float = 0.5,
+        trim_p: float = 0.0,
+        shift_limit: float = 0,
+        scale_limit: float = 0,
+        rotate_limit: float = 0,
+        ssr_p: float = 0,
+        clahe_p: float = 0,
+        reverse_p: float = 0,
         indp_normalz: bool = True,
     ):
         self.train_imgsize = train_imgsize
@@ -31,9 +32,14 @@ class Augmentations:
         self.reverse_p = reverse_p
         self.indp_normalz = indp_normalz
         self.ssr_p = ssr_p
+        self.trim_p = trim_p
         self.rng = default_rng()
+        self.plane = None
+        self.stage = None
 
     def set_transforms(self, stage, plane):
+        self.plane = plane
+        self.stage = stage
         transforms = []
 
         if stage == "train":
@@ -54,10 +60,10 @@ class Augmentations:
             if plane != "sagittal":
                 transforms.append(A.HorizontalFlip(p=0.5))
 
-            transforms.append(A.CenterCrop(self.train_imgsize[0], self.train_imgsize[1]))
+            transforms.append(A.CenterCrop(*self.train_imgsize))
 
         elif stage == "valid":
-            transforms.append(A.CenterCrop(self.test_imgsize[0], self.test_imgsize[1]))
+            transforms.append(A.CenterCrop(*self.test_imgsize))
 
         self.transforms = A.Compose(transforms)
 
@@ -80,37 +86,45 @@ class Augmentations:
 
         return np.array(out)
 
+    def trim_imgs(self, imgs, trim_p):
+        """trims first and last 10% imgs"""
+        remove_n = imgs.shape[0] // int(trim_p * 100)
+        return imgs[remove_n:-remove_n, :, :]
+
     def reverse_order(self, imgs):
         p = self.rng.random()
         if p < self.reverse_p:
             imgs = np.flipud(imgs)
         return imgs
 
-    def standardize(self, imgs, plane):
+    def standardize(self, imgs):
         if self.indp_normalz:
-            if plane == "axial":
+            if self.plane == "axial":
                 MEAN, SD = 66.4869, 60.8146
-            elif plane == "sagittal":
+            elif self.plane == "sagittal":
                 MEAN, SD = 60.0440, 48.3106
-            elif plane == "coronal":
+            elif self.plane == "coronal":
                 MEAN, SD = 61.9277, 64.2818
         else:
             MEAN, SD = 58.09, 49.73
 
         return (imgs - MEAN) / SD
 
-    def __call__(self, imgs, plane, stage):
+    def __call__(self, imgs):
+
+        if self.trim_p > 0.0:
+            imgs = self.trim_imgs(imgs, self.trim_p)
 
         # Rescale intensities to range between 0 and 255 -> tror ikke den gør noget!
         imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
         imgs = imgs.astype(np.uint8)
 
-        res = self.apply_transforms(imgs)
+        imgs = self.apply_transforms(imgs)
 
         # apply reverse ordering for saggital
-        if plane == "sagittal" and stage == "train":
-            res = self.reverse_order(res)
+        if self.plane == "sagittal" and self.stage == "train" and self.reverse_p > 0.0:
+            imgs = self.reverse_order(imgs)
 
-        res = self.standardize(imgs=res, plane=plane)
+        imgs = self.standardize(imgs)
 
-        return res
+        return imgs

@@ -11,6 +11,8 @@ from sklearn.metrics import roc_auc_score
 
 # %%
 
+# %%
+
 
 def predict(model, dl):
     preds_and_lbls = []
@@ -41,22 +43,15 @@ model = MRKnee.load_from_checkpoint(
     log_ind_loss=False,
 )
 
+augs = Augmentations(train_imgsize=(256, 256), test_imgsize=(256, 256))
+
 ds = MRNet(
     datadir="data/mrnet",
     stage="valid",
     diagnosis="acl",
     plane="sagittal",
     clean=False,
-    trim=False,
-    shift_limit=0,
-    scale_limit=0,
-    rotate_limit=0,
-    ssr_p=0,
-    clahe_p=0,
-    indp_normalz=True,
-    trim_p=0,
-    imgs_in_ram=False,
-    no_augments=True,
+    transforms=augs,
 )
 
 
