@@ -17,6 +17,8 @@ from numpy.random import default_rng
 
 
 # %%
+
+# %%
 class DS(ABC, Dataset):
     """ABC for datasets"""
 
@@ -160,9 +162,9 @@ class DS(ABC, Dataset):
         imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
         imgs = imgs.astype(np.uint8)
 
-        res = self.apply_transforms(imgs)
+        imgs = self.apply_transforms(imgs)
 
-        res = self.standardize(imgs=res)
+        imgs = self.standardize(imgs)
 
         imgs = torch.from_numpy(imgs).float()
         imgs = imgs.unsqueeze(1)  # add channel
