@@ -7,6 +7,7 @@ from joblib import dump, load
 from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, roc_auc_score
+from augmentations import Augmentations
 
 from src.cnnpredict import CNNPredict
 from src.model import MRKnee
@@ -24,20 +25,20 @@ class Ensamble:
         self.X_val = None
         self.y_val = None
 
-    def get_data(self, predictors: List[CNNPredict]):
+    def get_preds_and_lbls(self, predictors: List[CNNPredict]):
         predictors = [predictor.make_preds() for predictor in predictors]
-
+        # TODO: dependency inversion by implementing a get_lbls method?
         X = np.stack([predictor.preds for predictor in predictors], axis=1)
 
         y = predictors[0].lbls.ravel()
         return X, y
 
     def train(self, predictors):
-        self.X_train, self.y_train = self.get_data(predictors)
+        self.X_train, self.y_train = self.get_preds_and_lbls(predictors)
         self.clf.fit(self.X_train, self.y_train)
 
     def validate(self, predictors):
-        self.X_val, self.y_val = self.get_data(predictors)
+        self.X_val, self.y_val = self.get_preds_and_lbls(predictors)
         self.probas = self.clf.predict_proba(self.X_val)
         self.preds = np.argmax(self.probas, axis=-1)
 
@@ -56,8 +57,8 @@ class Ensamble:
         )
         return metrics
 
-    def dump_model(self, fname: str):
-        dump(self.clf, f"out/models/{fname}.joblib")
+    def dump_model(self, fpath: str):
+        dump(self.clf, fpath)
 
     def load_model(self, path: str):
         self.clf = load(path)
@@ -67,8 +68,10 @@ class Ensamble:
 
 
 def collect_predictors(
-    diagnosis: str, planes: List[str], stage: str, datadir: str, ds_class
+    diagnosis: str, planes: List[str], stage: str, imgsize, ds_class
 ):
+
+    augs = Augmentations(train_imgsize=imgsize, test_imgsize=imgsize)
 
     predictors = []
 
@@ -86,25 +89,16 @@ def collect_predictors(
         )
 
         ds = ds_class(
-            datadir=datadir,
             stage=stage,
             diagnosis=diagnosis,
             plane=plane,
             clean=False,
-            trim=False,
-            shift_limit=0.2,
-            scale_limit=0.2,
-            rotate_limit=0.2,
-            ssr_p=0.2,
-            clahe_p=0.2,
-            indp_normalz=True,
-            no_augments=True,
+            transforms=augs,
         )
 
         dl = DataLoader(
             ds,
             batch_size=1,
-            shuffle=False,
             num_workers=0,
             pin_memory=True,
         )
