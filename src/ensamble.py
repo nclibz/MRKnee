@@ -27,10 +27,9 @@ class Ensamble:
 
     def get_preds_and_lbls(self, predictors: List[CNNPredict]):
         predictors = [predictor.make_preds() for predictor in predictors]
-        # TODO: dependency inversion by implementing a get_lbls method?
-        X = np.stack([predictor.preds for predictor in predictors], axis=1)
+        X = np.stack([predictor.get_preds() for predictor in predictors], axis=1)
 
-        y = predictors[0].lbls.ravel()
+        y = predictors[0].get_lbls().ravel()
         return X, y
 
     def train(self, predictors):

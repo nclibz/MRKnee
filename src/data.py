@@ -147,11 +147,11 @@ class KneeMRI(DS):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.datadir = self.datadir if self.datadir else "data/kneemri"
         self.img_dir = os.path.join(self.datadir, "imgs")
         path_metadata = os.path.join(self.datadir, "metadata.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
-        self.datadir = self.datadir if self.datadir else "data/kneemri"
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)
@@ -169,11 +169,11 @@ class SkmTea(DS):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.datadir = self.datadir if self.datadir else "data/skm-tea"
         self.img_dir = os.path.join(self.datadir, "imgs")
         path_metadata = os.path.join(self.datadir, "targets.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
-        self.datadir = self.datadir if self.datadir else "data/skm-tea"
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)
@@ -188,11 +188,11 @@ class OAI(DS):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.datadir = self.datadir if self.datadir else "data/oai"
         self.img_dir = os.path.join(self.datadir, "imgs")
         path_metadata = os.path.join(self.datadir, "targets.csv")
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
-        self.datadir = self.datadir if self.datadir else "data/oai"
 
     def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
         cases = pd.read_csv(path)

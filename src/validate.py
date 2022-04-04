@@ -71,6 +71,7 @@ oai_acl_sag[0].plot_roc()
 
 
 # %%
+### TEST SAG-COR ENSAMBLE ON OAI
 mrnet_acl_cor_sag_preds = collect_predictors(
     "acl", ["sagittal", "coronal"], "train", (256, 256), MRNet
 )
@@ -79,10 +80,13 @@ oai_acl_cor_sag_preds = collect_predictors(
 )
 
 # %%
-### INTERNAL VALIDATION OF ENSAMBLE
 oai_acl_ensamble = Ensamble()
 oai_acl_ensamble.train(mrnet_acl_cor_sag_preds)
 oai_acl_ensamble.validate(oai_acl_cor_sag_preds)
 
 
+# %%
+oai_acl_ensamble.get_metrics()
+# %%
+oai_acl_ensamble.dump_model("src/models/v3/acl_oai_ensamble.joblib")
 # %%
