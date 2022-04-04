@@ -190,7 +190,7 @@ class OAI(DS):
         super().__init__(*args, **kwargs)
         self.datadir = self.datadir if self.datadir else "data/oai"
         self.img_dir = os.path.join(self.datadir, "imgs")
-        path_metadata = os.path.join(self.datadir, "targets.csv")
+        path_metadata = f"{self.datadir}/{self.stage}-{self.diagnosis}.csv"
         self.ids, self.lbls = self.get_cases(path_metadata)
         self.weight = self.calculate_weights(self.lbls)
 
@@ -205,8 +205,8 @@ class OAI(DS):
         cases = cases.assign(
             img_id=cases.id.astype(str) + "_" + cases.side + "_" + cases.plane
         )
-        lbls = cases[self.diagnosis].to_list()
         ids = cases["img_id"].to_list()
+        lbls = cases[self.diagnosis].to_list()
 
         if self.imgs_in_ram:
             ids = [self.load_npy_img(self.img_dir, id) for id in ids]
