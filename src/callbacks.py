@@ -9,7 +9,7 @@ from optuna.integration.pytorch_lightning import PyTorchLightningPruningCallback
 
 
 class Callbacks:
-    def __init__(self, cfg, trial, neptune_name: str):
+    def __init__(self, cfg, trial=None, neptune_name: str = None):
         self.cfg = cfg
         self.trial = trial
         self.neptune_name = neptune_name
@@ -30,10 +30,10 @@ class Callbacks:
         return self.neptune_logger
 
     def get_callbacks(self):
-
+        callbacks = []
         # Callbacks
         self.model_checkpoint = ModelCheckpoint(
-            dirpath=f"checkpoints/trial{self.trial.number}/",
+            dirpath=f"checkpoints/",
             filename="{epoch:02d}-{val_loss:.2f}-{val_auc:.2f}",
             verbose=True,
             save_top_k=2,
@@ -42,14 +42,18 @@ class Callbacks:
             every_n_epochs=1,
             save_weights_only=True,
         )
+        callbacks.append(self.model_checkpoint)
 
         self.lr_monitor = LearningRateMonitor(logging_interval="epoch")
+        callbacks.append(self.lr_monitor)
 
-        # self.metrics_callback = MetricsCallback()
+        if self.trial:
+            self.prune_callback = PyTorchLightningPruningCallback(
+                self.trial, monitor="val_loss"
+            )
+            callbacks.append(self.prune_callback)
 
-        self.prune_callback = PyTorchLightningPruningCallback(self.trial, monitor="val_loss")
-
-        return [self.model_checkpoint, self.prune_callback, self.lr_monitor]
+        return callbacks
 
     # def upload_best_checkpoints(self):
     #     self.neptune_logger.experiment.set_property(

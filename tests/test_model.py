@@ -10,7 +10,7 @@ from src.model import MRKnee
 from sklearn.metrics import roc_auc_score
 
 
-# %%
+# # %%
 
 
 def predict(model, dl):

@@ -18,9 +18,7 @@ from numpy.random import default_rng
 
 # %%
 
-# %%
-
-# %%
+# TODO: Implement imgs_in_ram properly
 class DS(ABC, Dataset):
     """ABC for datasets"""
 
@@ -33,23 +31,30 @@ class DS(ABC, Dataset):
         transforms,
         imgs_in_ram=False,
         datadir=None,
+        img_dir=None,
     ) -> None:
         self.stage = stage
         self.plane = plane
         self.diagnosis = diagnosis
         self.clean = clean
-        self.ids = None
-        self.lbls = None
-        self.weight = None
-        self.img_dir = None
         self.imgs_in_ram = imgs_in_ram
         self.train_imgsize = None
         self.test_imgsize = None
-        self.datadir = datadir
+        self.datadir = datadir if datadir else self._datadir
+        self.img_dir = (
+            os.path.join(self.datadir, img_dir)
+            if img_dir
+            else os.path.join(self.datadir, self._img_dir)
+        )
+
+        self.ids, self.lbls = self.get_cases(self.datadir, self.stage, self.diagnosis)
+        self.weight = self.calculate_weights(self.lbls)
         self.transforms = transforms.set_transforms(stage, plane)
 
     @abstractmethod
-    def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
+    def get_cases(
+        self, datadir: str, stage: str, diagnosis: str
+    ) -> Tuple[List[str], List[int]]:
         """Read metadata and return tuple with list of ids and lbls"""
         pass
 
@@ -77,7 +82,7 @@ class DS(ABC, Dataset):
         # Rescale intensities to range between 0 and 255 -> tror ikke den gør noget!
         imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
         imgs = imgs.astype(np.uint8)
-
+        # TODO: DER ER NOGET MED TRIM IMAGES DER IKKE VIRKER MED OAI
         imgs = self.transforms(imgs)
 
         imgs = torch.from_numpy(imgs).float()
@@ -94,9 +99,9 @@ class MRNet(DS):
     """MRNet dataset"""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.datadir = self.datadir if self.datadir else "data/mrnet"
-        self.img_dir = os.path.join(self.datadir, self.stage, self.plane)
+
+        self._datadir = "data/mrnet"
+        self._img_dir = os.path.join(kwargs["stage"], kwargs["plane"])
 
         exclude = {
             "train": {
@@ -117,17 +122,14 @@ class MRNet(DS):
             "valid": {"sagittal": ["1159", "1230"], "axial": ["1136"], "coronal": []},
         }
 
+        super().__init__(*args, **kwargs)
         self.exclusions = exclude[self.stage][self.plane] if self.clean else None
 
-        # get cases
-        path_metadata = f"{self.datadir}/{self.stage}-{self.diagnosis}.csv"
-        self.ids, self.lbls = self.get_cases(path_metadata)
-
-        # Calculate weights
-        self.weight = self.calculate_weights(self.lbls)
-
-    def get_cases(self, path):
+    def get_cases(self, datadir: str, stage: str, diagnosis: str):
         """load metadata and return tupple with list of ids and list of lbls"""
+
+        path = f"{datadir}/{stage}-{diagnosis}.csv"
+
         cases = pd.read_csv(
             path, header=None, names=["id", "lbl"], dtype={"id": str, "lbl": np.int64}
         )
@@ -146,14 +148,16 @@ class KneeMRI(DS):
     """Stajdur kneemri dataset"""
 
     def __init__(self, *args, **kwargs):
+        self._datadir = "data/kneemri"
+        self._img_dir = "imgs"
         super().__init__(*args, **kwargs)
-        self.datadir = self.datadir if self.datadir else "data/kneemri"
-        self.img_dir = os.path.join(self.datadir, "imgs")
-        path_metadata = os.path.join(self.datadir, "metadata.csv")
-        self.ids, self.lbls = self.get_cases(path_metadata)
-        self.weight = self.calculate_weights(self.lbls)
 
-    def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
+        assert self.plane == "sagittal"
+
+    def get_cases(
+        self, datadir: str, stage: str, diagnosis: str
+    ) -> Tuple[List[str], List[int]]:
+        path = os.path.join(datadir, "metadata.csv")
         cases = pd.read_csv(path)
         cases["ids"] = cases["volumeFilename"].str.replace(".pck", "", regex=False)
         cases["aclDiagnosis"] = cases["aclDiagnosis"].replace(2, 1)
@@ -168,14 +172,14 @@ class SkmTea(DS):
     """Stanford skm-tea dataset"""
 
     def __init__(self, *args, **kwargs):
+        self._datadir = "data/skm-tea"
+        self._img_dir = "imgs"
         super().__init__(*args, **kwargs)
-        self.datadir = self.datadir if self.datadir else "data/skm-tea"
-        self.img_dir = os.path.join(self.datadir, "imgs")
-        path_metadata = os.path.join(self.datadir, "targets.csv")
-        self.ids, self.lbls = self.get_cases(path_metadata)
-        self.weight = self.calculate_weights(self.lbls)
 
-    def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
+    def get_cases(
+        self, datadir: str, stage: str, diagnosis: str
+    ) -> Tuple[List[str], List[int]]:
+        path = os.path.join(datadir, "metadata.csv")
         cases = pd.read_csv(path)
         ids = cases["scan_id"].tolist()
         lbls = cases[self.diagnosis].tolist()
@@ -187,14 +191,17 @@ class OAI(DS):
     """OAI DATASET"""
 
     def __init__(self, *args, **kwargs):
+        assert kwargs["plane"] in ["coronal", "sagittal"]
+        self._datadir = "data/oai"
+        self._img_dir = "imgs"
         super().__init__(*args, **kwargs)
-        self.datadir = self.datadir if self.datadir else "data/oai"
-        self.img_dir = os.path.join(self.datadir, "imgs")
-        path_metadata = f"{self.datadir}/{self.stage}-{self.diagnosis}.csv"
-        self.ids, self.lbls = self.get_cases(path_metadata)
-        self.weight = self.calculate_weights(self.lbls)
 
-    def get_cases(self, path: str) -> Tuple[List[str], List[int]]:
+    def get_cases(
+        self, datadir: str, stage: str, diagnosis: str
+    ) -> Tuple[List[str], List[int]]:
+
+        path = f"{datadir}/{stage}-{diagnosis}.csv"
+
         cases = pd.read_csv(path)
 
         if self.plane == "coronal":
@@ -276,6 +283,3 @@ class MRNetDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
         )
-
-
-# %%
