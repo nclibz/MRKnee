@@ -95,6 +95,7 @@ class DS(ABC, Dataset):
 
 
 # %%
+# TODO: Har ikke implementeret imgs in ram!
 class MRNet(DS):
     """MRNet dataset"""
 
@@ -121,9 +122,11 @@ class MRNet(DS):
             },
             "valid": {"sagittal": ["1159", "1230"], "axial": ["1136"], "coronal": []},
         }
+        self.exclusions = (
+            exclude[kwargs["stage"]][kwargs["plane"]] if kwargs["clean"] else None
+        )
 
         super().__init__(*args, **kwargs)
-        self.exclusions = exclude[self.stage][self.plane] if self.clean else None
 
     def get_cases(self, datadir: str, stage: str, diagnosis: str):
         """load metadata and return tupple with list of ids and list of lbls"""

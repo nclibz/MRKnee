@@ -48,7 +48,9 @@ kneemri_predictors[0].plot_roc()
 # TODO: normalize intensities ved at bruge histogram fra mrnet train set?
 # TODO: IKKE KØRT FORDI OUT OF MEMORY. SKAL KUNNE LAVE TRIM FRA COLLECT PREDS
 
-skmtea_acl_sag = collect_predictors("acl", ["sagittal"], "valid", (256, 256), SkmTea)
+skmtea_acl_sag = collect_predictors(
+    "acl", ["sagittal"], "valid", (256, 256), SkmTea, ckpt_dir="src/models/v3"
+)
 
 skmtea_men_sag = collect_predictors(
     "meniscus", ["sagittal"], "valid", (256, 256), SkmTea

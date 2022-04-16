@@ -6,7 +6,9 @@ import torch
 from sklearn import metrics
 from sklearn.metrics import roc_auc_score
 from tqdm import tqdm
-
+from src.augmentations import Augmentations
+from torch.utils.data import DataLoader
+from src.model import MRKnee
 
 # %%
 
@@ -40,12 +42,12 @@ class CNNPredict:
         return self
 
     def get_preds(self):
-        if not self.preds:
+        if len(self.preds) == 0:
             self.make_preds()
         return self.preds
 
     def get_lbls(self):
-        if not self.lbls:
+        if len(self.lbls) == 0:
             self.make_preds()
         return self.lbls
 
@@ -72,3 +74,41 @@ class CNNPredict:
 
 
 # %%
+def collect_predictors(
+    diagnosis: str, planes: List[str], stage: str, imgsize: int, ds_class, ckpt_dir: str
+):
+
+    augs = Augmentations(train_imgsize=imgsize, test_imgsize=imgsize)
+
+    predictors = []
+
+    for plane in planes:
+        model = MRKnee.load_from_checkpoint(
+            f"{ckpt_dir}/{diagnosis}_{plane}.ckpt",
+            backbone="tf_efficientnetv2_s_in21k",
+            drop_rate=0.5,
+            learning_rate=1e-4,
+            adam_wd=0.001,
+            max_epochs=20,
+            precision=32,
+            log_auc=False,
+            log_ind_loss=False,
+        )
+
+        ds = ds_class(
+            stage=stage,
+            diagnosis=diagnosis,
+            plane=plane,
+            clean=False,
+            transforms=augs,
+        )
+
+        dl = DataLoader(
+            ds,
+            batch_size=1,
+            num_workers=0,
+            pin_memory=True,
+        )
+
+        predictors.append(CNNPredict(model, dl))
+    return predictors

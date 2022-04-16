@@ -10,6 +10,14 @@ from torch.utils.data.dataloader import DataLoader
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import roc_auc_score
 import albumentations as A
+import random
+
+
+def seed_everything(seed:int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 def show_batch(imgs, from_dl=False):
@@ -37,11 +45,11 @@ def calc_norm_data(dl, plane_int):
         mask = data.ne(0.0)
         data = data[mask]
         sum += data.sum()
-        meansq = meansq + (data ** 2).sum()
+        meansq = meansq + (data**2).sum()
         count += data.shape[0]
 
     total_mean = sum / count
-    total_var = (meansq / count) - (total_mean ** 2)
+    total_var = (meansq / count) - (total_mean**2)
     total_std = torch.sqrt(total_var)
     print("mean: " + str(total_mean))
     print("std: " + str(total_std))
@@ -85,11 +93,19 @@ def get_preds(
         elif "b1" in backbone:
             img_sz = 240
 
-        transf = {"train": [A.CenterCrop(img_sz, img_sz)], "valid": [A.CenterCrop(img_sz, img_sz)]}
+        transf = {
+            "train": [A.CenterCrop(img_sz, img_sz)],
+            "valid": [A.CenterCrop(img_sz, img_sz)],
+        }
 
         # data setup
         dm = MRKneeDataModule(
-            datadir, diagnosis, planes=[plane], indp_normalz=True, clean=False, transf=transf
+            datadir,
+            diagnosis,
+            planes=[plane],
+            indp_normalz=True,
+            clean=False,
+            transf=transf,
         )
         if stage == "train":
             ds = dm.train_ds
@@ -197,24 +213,37 @@ class KneePlot:
 
         slice_init_coronal = self.slice_nums[case_init]["coronal"] - 1
         slices_widget_coronal = IntSlider(
-            min=0, max=slice_init_coronal, value=slice_init_coronal // 2, description="Coronal"
+            min=0,
+            max=slice_init_coronal,
+            value=slice_init_coronal // 2,
+            description="Coronal",
         )
 
         slice_init_sagittal = self.slice_nums[case_init]["sagittal"] - 1
         slices_widget_sagittal = IntSlider(
-            min=0, max=slice_init_sagittal, value=slice_init_sagittal // 2, description="Sagittal"
+            min=0,
+            max=slice_init_sagittal,
+            value=slice_init_sagittal // 2,
+            description="Sagittal",
         )
 
         slice_init_axial = self.slice_nums[case_init]["axial"] - 1
         slices_widget_axial = IntSlider(
-            min=0, max=slice_init_axial, value=slice_init_axial // 2, description="Axial"
+            min=0,
+            max=slice_init_axial,
+            value=slice_init_axial // 2,
+            description="Axial",
         )
 
         def update_slices_widget(*args):
-            slices_widget_coronal.max = self.slice_nums[case_widget.value]["coronal"] - 1
+            slices_widget_coronal.max = (
+                self.slice_nums[case_widget.value]["coronal"] - 1
+            )
             slices_widget_coronal.value = slices_widget_coronal.max // 2
 
-            slices_widget_sagittal.max = self.slice_nums[case_widget.value]["sagittal"] - 1
+            slices_widget_sagittal.max = (
+                self.slice_nums[case_widget.value]["sagittal"] - 1
+            )
             slices_widget_sagittal.value = slices_widget_sagittal.max // 2
 
             slices_widget_axial.max = self.slice_nums[case_widget.value]["axial"] - 1
