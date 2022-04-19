@@ -59,7 +59,7 @@ class MetricLogger:
         self.set_attributes()
 
     def set_attributes(self):
-        all_metrics = self.train_metrics | self.val_metrics
+        all_metrics = {**self.train_metrics, **self.val_metrics}
         for k, v in all_metrics.items():
             setattr(self, k, v)
 
