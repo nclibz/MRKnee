@@ -8,8 +8,8 @@ from torchmetrics.functional import auroc
 
 @dataclass
 class Metric(ABC):
-    step_values: list[torch.Tensor] = field(default_factory=list)
-    epoch_values: list[torch.Tensor] = field(default_factory=list)
+    step_values: List[torch.Tensor] = field(default_factory=list)
+    epoch_values: List[torch.Tensor] = field(default_factory=list)
 
     @abstractmethod
     def log_step(self, preds, targets, loss):
