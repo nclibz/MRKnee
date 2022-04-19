@@ -5,7 +5,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import pytorch_lightning as pl
+
+# import pytorch_lightning as pl
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
@@ -41,20 +42,14 @@ class DS(ABC, Dataset):
         self.train_imgsize = None
         self.test_imgsize = None
         self.datadir = datadir if datadir else self._datadir
-        self.img_dir = (
-            os.path.join(self.datadir, img_dir)
-            if img_dir
-            else os.path.join(self.datadir, self._img_dir)
-        )
+        self.img_dir = os.path.join(self.datadir, img_dir) if img_dir else os.path.join(self.datadir, self._img_dir)
 
         self.ids, self.lbls = self.get_cases(self.datadir, self.stage, self.diagnosis)
         self.weight = self.calculate_weights(self.lbls)
         self.transforms = transforms.set_transforms(stage, plane)
 
     @abstractmethod
-    def get_cases(
-        self, datadir: str, stage: str, diagnosis: str
-    ) -> Tuple[List[str], List[int]]:
+    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
         """Read metadata and return tuple with list of ids and lbls"""
         pass
 
@@ -122,9 +117,7 @@ class MRNet(DS):
             },
             "valid": {"sagittal": ["1159", "1230"], "axial": ["1136"], "coronal": []},
         }
-        self.exclusions = (
-            exclude[kwargs["stage"]][kwargs["plane"]] if kwargs["clean"] else None
-        )
+        self.exclusions = exclude[kwargs["stage"]][kwargs["plane"]] if kwargs["clean"] else None
 
         super().__init__(*args, **kwargs)
 
@@ -133,9 +126,7 @@ class MRNet(DS):
 
         path = f"{datadir}/{stage}-{diagnosis}.csv"
 
-        cases = pd.read_csv(
-            path, header=None, names=["id", "lbl"], dtype={"id": str, "lbl": np.int64}
-        )
+        cases = pd.read_csv(path, header=None, names=["id", "lbl"], dtype={"id": str, "lbl": np.int64})
 
         # Exclude cases
         if self.stage == "train" and self.exclusions:
@@ -157,9 +148,7 @@ class KneeMRI(DS):
 
         assert self.plane == "sagittal"
 
-    def get_cases(
-        self, datadir: str, stage: str, diagnosis: str
-    ) -> Tuple[List[str], List[int]]:
+    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
         path = os.path.join(datadir, "metadata.csv")
         cases = pd.read_csv(path)
         cases["ids"] = cases["volumeFilename"].str.replace(".pck", "", regex=False)
@@ -179,9 +168,7 @@ class SkmTea(DS):
         self._img_dir = "imgs"
         super().__init__(*args, **kwargs)
 
-    def get_cases(
-        self, datadir: str, stage: str, diagnosis: str
-    ) -> Tuple[List[str], List[int]]:
+    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
         path = os.path.join(datadir, "metadata.csv")
         cases = pd.read_csv(path)
         ids = cases["scan_id"].tolist()
@@ -199,9 +186,7 @@ class OAI(DS):
         self._img_dir = "imgs"
         super().__init__(*args, **kwargs)
 
-    def get_cases(
-        self, datadir: str, stage: str, diagnosis: str
-    ) -> Tuple[List[str], List[int]]:
+    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
 
         path = f"{datadir}/{stage}-{diagnosis}.csv"
 
@@ -212,9 +197,7 @@ class OAI(DS):
         elif self.plane == "sagittal":
             cases = cases[cases.plane == "SAG"]
 
-        cases = cases.assign(
-            img_id=cases.id.astype(str) + "_" + cases.side + "_" + cases.plane
-        )
+        cases = cases.assign(img_id=cases.id.astype(str) + "_" + cases.side + "_" + cases.plane)
         ids = cases["img_id"].to_list()
         lbls = cases[self.diagnosis].to_list()
 
@@ -225,64 +208,64 @@ class OAI(DS):
 
 
 # %%
-class MRNetDataModule(pl.LightningDataModule):
-    def __init__(
-        self,
-        datadir,
-        diagnosis,
-        transforms,
-        plane,
-        clean,
-        trim_train,
-        num_workers=1,
-        pin_memory=True,
-        shuffle_train=True,
-    ):
-        super().__init__()
-        self.diagnosis = diagnosis
-        self.transforms = transforms
-        self.datadir = datadir
-        self.plane = plane
-        self.clean = clean
-        self.trim_train = trim_train
-        self.num_workers = num_workers
-        self.pin_memory = pin_memory
-        self.shuffle_train = shuffle_train
+# class MRNetDataModule(pl.LightningDataModule):
+#     def __init__(
+#         self,
+#         datadir,
+#         diagnosis,
+#         transforms,
+#         plane,
+#         clean,
+#         trim_train,
+#         num_workers=1,
+#         pin_memory=True,
+#         shuffle_train=True,
+#     ):
+#         super().__init__()
+#         self.diagnosis = diagnosis
+#         self.transforms = transforms
+#         self.datadir = datadir
+#         self.plane = plane
+#         self.clean = clean
+#         self.trim_train = trim_train
+#         self.num_workers = num_workers
+#         self.pin_memory = pin_memory
+#         self.shuffle_train = shuffle_train
 
-        self.train_ds = MRNet(
-            datadir=self.datadir,
-            stage="train",
-            diagnosis=self.diagnosis,
-            plane=self.plane,
-            clean=self.clean,
-            trim=self.trim_train,
-            transforms=self.transforms,
-        )
+#         self.train_ds = MRNet(
+#             datadir=self.datadir,
+#             stage="train",
+#             diagnosis=self.diagnosis,
+#             plane=self.plane,
+#             clean=self.clean,
+#             trim=self.trim_train,
+#             transforms=self.transforms,
+#         )
 
-        self.val_ds = MRNet(
-            datadir=self.datadir,
-            stage="valid",
-            diagnosis=self.diagnosis,
-            plane=self.plane,
-            clean=self.clean,
-            trim=False,
-            transforms=self.transforms,
-        )
+#         self.val_ds = MRNet(
+#             datadir=self.datadir,
+#             stage="valid",
+#             diagnosis=self.diagnosis,
+#             plane=self.plane,
+#             clean=self.clean,
+#             trim=False,
+#             transforms=self.transforms,
+#         )
 
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_ds,
-            batch_size=1,
-            shuffle=self.shuffle_train,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-        )
+#     def train_dataloader(self):
+#         return DataLoader(
+#             self.train_ds,
+#             batch_size=1,
+#             shuffle=self.shuffle_train,
+#             num_workers=self.num_workers,
+#             pin_memory=self.pin_memory,
+#         )
 
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_ds,
-            batch_size=1,
-            shuffle=False,
-            num_workers=self.num_workers,
-            pin_memory=self.pin_memory,
-        )
+#     def val_dataloader(self):
+#         return DataLoader(
+#             self.val_ds,
+#             batch_size=1,
+#             shuffle=False,
+#             num_workers=self.num_workers,
+#             pin_memory=self.pin_memory,
+#         )
