@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, List
 import torch
 from torchmetrics.functional import auroc
 
@@ -44,8 +44,8 @@ class MetricLogger:
 
 @dataclass
 class AUC(Metric):
-    step_preds: list[torch.Tensor] = field(default_factory=list)
-    step_targets: list[torch.Tensor] = field(default_factory=list)
+    step_preds: List[torch.Tensor] = field(default_factory=list)
+    step_targets: List[torch.Tensor] = field(default_factory=list)
 
     def log_step(self, preds, targets, loss):
         self.step_preds.append(preds)
