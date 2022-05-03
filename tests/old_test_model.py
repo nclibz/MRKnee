@@ -1,14 +1,12 @@
 # %%
-import torch
 import pytest
-
-from src.data import MRNet
-from src.augmentations import Augmentations
-from tqdm import tqdm
-from torch.utils.data import DataLoader
-from src.model import MRKnee
+import torch
 from sklearn.metrics import roc_auc_score
-
+from src.augmentations import Augmentations
+from src.data import MRNet
+from src.model import MRKnee
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 # # %%
 
@@ -24,9 +22,7 @@ def predict(model, dl):
             logit = model(imgs)
             preds_and_lbls.append((torch.sigmoid(logit), label))
     preds = torch.tensor([pred for pred, lbl in preds_and_lbls]).cpu().numpy()
-    lbls = (
-        torch.tensor([lbl for pred, lbl in preds_and_lbls]).cpu().unsqueeze(1).numpy()
-    )
+    lbls = torch.tensor([lbl for pred, lbl in preds_and_lbls]).cpu().unsqueeze(1).numpy()
     return preds, lbls
 
 

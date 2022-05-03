@@ -1,22 +1,17 @@
 # %%
 
+import random
 from typing import List
+
+import numpy as np
+import pandas as pd
 import pytest
 from src.augmentations import Augmentations
-import pandas as pd
-from src.data import OAI, KneeMRI
-import random
-import numpy as np
+from src.data import OAI, KneeMRI, MRNet
 
 # %%
 
 oai_params = [
-    ("train", "acl", "coronal"),
-    ("train", "acl", "sagittal"),
-    ("valid", "acl", "coronal"),
-    ("valid", "acl", "sagittal"),
-    ("test", "acl", "coronal"),
-    ("test", "acl", "sagittal"),
     ("train", "meniscus", "coronal"),
     ("train", "meniscus", "sagittal"),
     ("valid", "meniscus", "coronal"),
@@ -25,14 +20,26 @@ oai_params = [
     ("test", "meniscus", "sagittal"),
 ]
 
+
+mrnet_params = [
+    ("train", "meniscus", "coronal"),
+    ("train", "meniscus", "sagittal"),
+    ("train", "meniscus", "axial"),
+    ("valid", "meniscus", "coronal"),
+    ("valid", "meniscus", "sagittal"),
+    ("valid", "meniscus", "axial"),
+    ("test", "meniscus", "coronal"),
+    ("test", "meniscus", "sagittal"),
+    ("test", "meniscus", "axial"),
+]
+
+
 # TODO: Could add tests for each augment with a toy 4x4 array?
 
 
 def test_kneemri_ds_no_augs(augs):
     augs = augs["none"]
-    ds = KneeMRI(
-        stage="train", diagnosis="acl", plane="sagittal", clean=False, transforms=augs
-    )
+    ds = KneeMRI(stage="train", diagnosis="acl", plane="sagittal", clean=False, transforms=augs)
 
     targets = pd.read_csv(f"data/kneemri/metadata.csv")
 
@@ -47,13 +54,12 @@ def test_kneemri_ds_no_augs(augs):
     assert ds_case[1].item() == target_case["aclDiagnosis"]
 
 
+@pytest.mark.parametrize("stage, diagnosis, plane", oai_params)
 def test_oai_ds_no_augs(stage, diagnosis, plane, augs):
 
     augs = augs["none"]
 
-    ds = OAI(
-        stage=stage, diagnosis=diagnosis, plane=plane, clean=False, transforms=augs
-    )
+    ds = OAI(stage=stage, diagnosis=diagnosis, plane=plane, clean=False, transforms=augs)
     targets = pd.read_csv(f"data/oai/{stage}-{diagnosis}.csv")
 
     if plane == "coronal":
@@ -77,56 +83,60 @@ def test_oai_ds_all_augs(stage, diagnosis, plane, augs):
 
     augs = augs["all"]
 
-    ds = OAI(
-        stage=stage, diagnosis=diagnosis, plane=plane, clean=False, transforms=augs
-    )
+    ds = OAI(stage=stage, diagnosis=diagnosis, plane=plane, clean=False, transforms=augs)
 
     idx = random.randint(0, len(ds))
 
     ds[idx]
 
 
-def test_oai_ds_imgs_in_ram(augs):
+@pytest.mark.parametrize("stage, diagnosis, plane", mrnet_params)
+def test_mrnet_ds_no_augs(stage, diagnosis, plane, augs):
 
     augs = augs["none"]
 
-    ds = OAI(
-        stage="valid",
-        diagnosis="acl",
-        plane="sagittal",
-        clean=False,
-        transforms=augs,
-        imgs_in_ram=True,
-    )
+    ds = MRNet(stage=stage, diagnosis=diagnosis, plane=plane, clean=False, transforms=augs)
+    targets = pd.read_csv(f"data/mrnet/{stage}-{diagnosis}.csv", header=None)
 
-    ds[0]
+    assert len(ds) == len(targets)
 
+    idx = random.randint(0, len(ds))
 
-# %%
-# targets = pd.read_csv("data/oai/train-acl.csv")
+    batch = ds[idx]
 
-# cor_fnames = targets[targets.plane == "COR"]["fname"].to_list()
-# sag_fnames = targets[targets.plane == "SAG"]["fname"].to_list()
+    imgs = batch[0]
+    img_mean = imgs.mean().item()
+    img_std = imgs.std().item()
+    assert -0.15 <= img_mean <= 0.15
+    assert 0.9 <= img_std <= 1.1
 
 
-# imgs = [np.load("data/oai/imgs/" + fname) for fname in sag_fnames]
-# # %%
+@pytest.mark.parametrize(
+    "stage, diagnosis, plane",
+    [
+        ("train", "meniscus", "axial"),
+        ("train", "meniscus", "coronal"),
+        ("train", "meniscus", "sagittal"),
+    ],
+)
+def test_mrnet_stats(stage, diagnosis, plane, augs):
 
-# sum = 0
-# meansq = 0
-# count = 0
+    augs = augs["none"]
 
-# for a in imgs:
-#     mask = a != 0.0
-#     data = a[mask]
-#     sum += data.sum()
-#     meansq = meansq + (data**2).sum()
-#     count += data.shape[0]
+    ds = MRNet(stage=stage, diagnosis=diagnosis, plane=plane, clean=False, transforms=augs)
+    targets = pd.read_csv(f"data/mrnet/{stage}-{diagnosis}.csv", header=None)
 
-# total_mean = sum / count
-# total_var = (meansq / count) - (total_mean**2)
-# total_std = np.sqrt(total_var)
-# print("mean: " + str(total_mean))
-# print("std: " + str(total_std))
+    assert len(ds) == len(targets)
+
+    idx = random.randint(0, len(ds))
+
+    batch = ds[idx]
+
+    imgs = batch[0]
+    img_mean = imgs.mean().item()
+    img_std = imgs.std().item()
+    # assert -0.15 <= img_mean <= 0.15
+    # assert 0.85 <= img_std <= 1.15
+
 
 # %%

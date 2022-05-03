@@ -20,8 +20,6 @@ class Augmentations:
         rotate_limit: float = 0,
         ssr_p: float = 0,
         clahe_p: float = 0,
-        reverse_p: float = 0,
-        indp_normalz: bool = True,
     ):
         self.train_imgsize = train_imgsize
         self.test_imgsize = test_imgsize
@@ -29,17 +27,16 @@ class Augmentations:
         self.scale_limit = scale_limit
         self.rotate_limit = rotate_limit
         self.clahe_p = clahe_p
-        self.reverse_p = reverse_p
-        self.indp_normalz = indp_normalz
         self.ssr_p = ssr_p
         self.trim_p = trim_p
         self.rng = default_rng()
         self.plane = None
         self.stage = None
 
-    def set_transforms(self, stage, plane):
+    def set_transforms(self, stage, plane, stats):
         self.plane = plane
         self.stage = stage
+        self.mean, self.sd = stats[plane]
         transforms = []
 
         if stage == "train":
@@ -91,24 +88,8 @@ class Augmentations:
         remove_n = imgs.shape[0] // int(trim_p * 100)
         return imgs[remove_n:-remove_n, :, :]
 
-    def reverse_order(self, imgs):
-        p = self.rng.random()
-        if p < self.reverse_p:
-            imgs = np.flipud(imgs)
-        return imgs
-
     def standardize(self, imgs):
-        if self.indp_normalz:
-            if self.plane == "axial":
-                MEAN, SD = 66.4869, 60.8146
-            elif self.plane == "sagittal":
-                MEAN, SD = 60.0440, 48.3106
-            elif self.plane == "coronal":
-                MEAN, SD = 61.9277, 64.2818
-        else:
-            MEAN, SD = 58.09, 49.73
-
-        return (imgs - MEAN) / SD
+        return (imgs - self.mean) / self.sd
 
     def __call__(self, imgs):
 
@@ -120,10 +101,6 @@ class Augmentations:
         imgs = imgs.astype(np.uint8)
 
         imgs = self.apply_transforms(imgs)
-
-        # apply reverse ordering for saggital
-        if self.plane == "sagittal" and self.stage == "train" and self.reverse_p > 0.0:
-            imgs = self.reverse_order(imgs)
 
         imgs = self.standardize(imgs)
 
