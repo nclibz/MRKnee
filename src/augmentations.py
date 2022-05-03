@@ -4,8 +4,6 @@ import albumentations as A
 import numpy as np
 from numpy.random import default_rng
 
-# TODO: Skal gøre så test size kan justeres
-
 
 class Augmentations:
     """docstring"""

@@ -13,7 +13,7 @@ import albumentations as A
 import random
 
 
-def seed_everything(seed:int):
+def seed_everything(seed: int):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -33,109 +33,6 @@ def show_batch(imgs, from_dl=False):
         plt.axis("off")
         plt.subplots_adjust(wspace=0, hspace=0)
     plt.show()
-
-
-def calc_norm_data(dl, plane_int):
-    sum = 0
-    meansq = 0
-    count = 0
-
-    for _, data in enumerate(dl):
-        data = data[0][plane_int]
-        mask = data.ne(0.0)
-        data = data[mask]
-        sum += data.sum()
-        meansq = meansq + (data**2).sum()
-        count += data.shape[0]
-
-    total_mean = sum / count
-    total_var = (meansq / count) - (total_mean**2)
-    total_std = torch.sqrt(total_var)
-    print("mean: " + str(total_mean))
-    print("std: " + str(total_std))
-    return total_mean, total_std
-
-
-def print_top_losses(loss_dict, n):
-    k_high = heapq.nlargest(n, loss_dict, key=loss_dict.get)
-    print("Sample : Loss")
-    for k in k_high:
-        print(k, " : ", loss_dict.get(k))
-
-
-def get_preds(
-    datadir="data",
-    diagnosis="acl",
-    stage="train",
-    planes=["axial", "sagittal", "coronal"],
-    ckpt_dir="models/",
-    backbones=["efficientnet_b1"] * 3,
-    device="cuda",
-    num_workers=4,
-    **kwargs,
-):
-    from data import MRKneeDataModule  # to prevent circular imports
-    from model import MRKnee
-
-    model_ckpts = [f"{ckpt_dir}{diagnosis}_{plane}.ckpt" for plane in planes]
-    preds_dict = {}
-
-    for plane, model_ckpt, backbone in zip(planes, model_ckpts, backbones):
-        # model setup
-        model = MRKnee.load_from_checkpoint(
-            model_ckpt, planes=[plane], backbone=backbone, **kwargs
-        )
-        model.freeze()
-        model = model.to(device=torch.device(device))
-
-        if "b0" in backbone:
-            img_sz = 224
-        elif "b1" in backbone:
-            img_sz = 240
-
-        transf = {
-            "train": [A.CenterCrop(img_sz, img_sz)],
-            "valid": [A.CenterCrop(img_sz, img_sz)],
-        }
-
-        # data setup
-        dm = MRKneeDataModule(
-            datadir,
-            diagnosis,
-            planes=[plane],
-            indp_normalz=True,
-            clean=False,
-            transf=transf,
-        )
-        if stage == "train":
-            ds = dm.train_ds
-            dl = DataLoader(ds, batch_size=1, shuffle=False, num_workers=num_workers)
-        elif stage == "valid":
-            ds = dm.val_ds
-            dl = DataLoader(ds, batch_size=1, shuffle=False, num_workers=num_workers)
-
-        # gather preds
-        preds_list = []
-        for i, batch in enumerate(dl):
-            imgs, label, sample_id, weight = batch
-            imgs = imgs[0].to(device=torch.device(device))
-            preds = model(imgs)
-            preds = torch.sigmoid(preds)
-            preds_list.append(preds.item())
-        preds_dict[plane] = preds_list
-        if plane == planes[0]:
-            preds_dict["lbls"] = [lbl for id, lbl in ds.cases]
-            preds_dict["ids"] = [id for id, lbl in ds.cases]
-    return pd.DataFrame(preds_dict)
-
-
-def compare_clfs(clfs, X, y, X_val, y_val):
-    for name, clf in clfs.items():
-        clf.fit(X, y)
-        cv_score = np.mean(cross_val_score(clf, X, y))
-        preds = clf.predict(X_val)
-        auc = roc_auc_score(y_val, preds)
-        print(f"{name}: CV_SCORE: {cv_score:.4f} VAL_AUC: {auc:.4f}")
 
 
 ################# KNEEPLOT ###############
@@ -236,14 +133,10 @@ class KneePlot:
         )
 
         def update_slices_widget(*args):
-            slices_widget_coronal.max = (
-                self.slice_nums[case_widget.value]["coronal"] - 1
-            )
+            slices_widget_coronal.max = self.slice_nums[case_widget.value]["coronal"] - 1
             slices_widget_coronal.value = slices_widget_coronal.max // 2
 
-            slices_widget_sagittal.max = (
-                self.slice_nums[case_widget.value]["sagittal"] - 1
-            )
+            slices_widget_sagittal.max = self.slice_nums[case_widget.value]["sagittal"] - 1
             slices_widget_sagittal.value = slices_widget_sagittal.max // 2
 
             slices_widget_axial.max = self.slice_nums[case_widget.value]["axial"] - 1
