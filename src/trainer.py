@@ -43,7 +43,7 @@ class Trainer:
             self.metriclogger.log_step("train", pred, target, loss)
         self.metriclogger.log_epoch("train")
 
-    def test(self, dataloader):
+    def validate(self, dataloader):
         self.model.eval()
         with torch.no_grad():
             for imgs, target, sample_id, weight in tqdm(
@@ -67,4 +67,4 @@ class Trainer:
     def fit(self, epochs, train_dataloader, val_dataloader):
         for _ in tqdm(range(epochs), desc="Epochs", disable=not self.progressbar):
             self.train(train_dataloader)
-            self.test(val_dataloader)
+            self.validate(val_dataloader)

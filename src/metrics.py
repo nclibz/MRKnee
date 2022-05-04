@@ -1,9 +1,14 @@
 from abc import ABC, abstractmethod
-
 from dataclasses import dataclass, field
 from typing import Dict, List
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import torch
 from torchmetrics.functional import auroc
+
+# TODO: Implement sensitivity, specificity etc
 
 
 @dataclass
@@ -48,6 +53,7 @@ class Loss(Metric):
         mean_loss = torch.mean(loss)
         self.epoch_values.append(mean_loss)
         self.step_values = []
+        self.df = None
 
 
 @dataclass
@@ -56,11 +62,11 @@ class MetricLogger:
     val_metrics: Dict[str, Metric]
 
     def __post_init__(self):
-        self.set_attributes()
+        self.all_metrics = {**self.train_metrics, **self.val_metrics}
+        self.set_attributes(self.all_metrics)
 
-    def set_attributes(self):
-        all_metrics = {**self.train_metrics, **self.val_metrics}
-        for k, v in all_metrics.items():
+    def set_attributes(self, metrics: Dict[str, Metric]):
+        for k, v in metrics.items():
             setattr(self, k, v)
 
     def log_step(self, stage, preds, targets, loss):
@@ -70,3 +76,21 @@ class MetricLogger:
     def log_epoch(self, stage):
         metrics = self.train_metrics if stage == "train" else self.val_metrics
         _ = [m.log_epoch() for m in metrics.values()]
+
+    def get_metricsdf(self):
+        series = []
+        for k, v in self.all_metrics.items():
+            series.append(pd.Series(np.array(v.epoch_values), name=k))
+
+        df = pd.concat(series, axis=1).round(3)
+        return df
+
+    def plot_metrics(self, metrics: List[str]):
+        df = self.get_metricsdf()
+
+        fig, ax = plt.subplots()
+
+        for metric in metrics:
+            ax.plot(df.index.to_list(), df[metric], label=metric)
+
+        ax.legend(loc="best")
