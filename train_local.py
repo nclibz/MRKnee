@@ -1,102 +1,121 @@
-# %% 
+# %%
 import torch
-from torch.utils.data import DataLoader
+import wandb
+from dotenv import dotenv_values
+from madgrad import MADGRAD
 from tqdm import tqdm
 
 from src.augmentations import Augmentations
-from src.data import OAI, MRNet
+from src.data import OAI, MRNet, get_dataloader
 from src.metrics import AUC, Loss, MetricLogger
 from src.model import VanillaMRKnee
+from src.model_checkpoint import SaveModelCheckpoint
 from src.trainer import Trainer
 from src.utils import seed_everything
 
+ENV = dotenv_values()
 seed_everything(123)
-PLANE = "sagittal"
-BACKBONE = 'tf_mobilenetv3_small_minimal_100'
-DATASET_CLASS = OAI
-%load_ext autoreload
-%autoreload 2
+
+wandb.login(key=ENV["WANDB_API_KEY"])
+
+#%%
+##### CONFIG
+
+CFG = {
+    "plane": "coronal",
+    "backbone": "tf_mobilenetv3_small_minimal_100",
+    "protocol": "TSE",
+    "dataset": "oai",
+    "n_epochs": 15,
+}
+# %%%
 
 augs = Augmentations(
-    train_imgsize=(256, 256),
-    test_imgsize=(256, 256),
-    shift_limit=.10,
-    scale_limit=.10,
-    rotate_limit=.10,
-    ssr_p=.50,
-    clahe_p=0.50,
+    ssr_p=0.50,
+    shift_limit=0.15,
+    scale_limit=0.15,
+    rotate_limit=0.15,
+    bc_p=0.00,
+    brigthness_limit=0.10,
+    contrast_limit=0.10,
+    re_p=0.50,
+    clahe_p=0.70,
     trim_p=0.0,
 )
 
-train_ds = DATASET_CLASS(
+if CFG["dataset"] == "oai":
+    DATAREADER = OAI
+elif CFG["dataset"] == "mrnet":
+    DATAREADER = MRNet
+
+# TODO: flytte dr loading ind i get_dataloader
+
+train_dr = DATAREADER(
     stage="train",
     diagnosis="meniscus",
-    plane=PLANE,
+    plane=CFG["plane"],
+    protocol=CFG["protocol"],
     clean=True,
-    transforms=augs,
 )
 
-train_dl = DataLoader(
-        train_ds,
-        batch_size=1,
-        shuffle=True,
-        num_workers=2,
-        pin_memory=True,
-    )
-
-val_ds = DATASET_CLASS(
+val_dr = DATAREADER(
     stage="valid",
     diagnosis="meniscus",
-    plane=PLANE,
-    clean=True,
-    transforms=augs,)
-
-val_dl = DataLoader(
-        val_ds,
-        batch_size=1,
-        shuffle=False,
-        num_workers=2,
-        pin_memory=True,
-    )
-
-model = VanillaMRKnee(
-    BACKBONE,
-    drop_rate=0.60,
-    )
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=1e-4,
-    weight_decay=0.01,
-    )
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
-                                                        "min",
-                                                        patience=4,
-                                                        )
-
-metriclogger = MetricLogger(
-    train_metrics={
-        "train_loss": Loss(),
-        "train_auc": AUC(),
-    },
-    val_metrics={
-        "val_loss": Loss(),
-        "val_auc": AUC()
-    },
+    plane=CFG["plane"],
+    protocol=CFG["protocol"],
+    clean=False,
 )
 
-trainer = Trainer(model, optimizer, scheduler, metriclogger, progressbar = True,)
+train_dl = get_dataloader(train_dr, augs)
+val_dl = get_dataloader(val_dr, augs)
 
-for epoch in tqdm(range(4), desc='Epochs', disable=True):
+model = VanillaMRKnee(CFG["backbone"], pretrained=True, drop_rate=0.7)
+
+optimizer = MADGRAD(model.parameters(), lr=1e-4, weight_decay=0.01)
+
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer,
+    "min",
+    patience=4,
+)
+
+metriclogger = MetricLogger(
+    train_metrics={"train_loss": Loss(), "train_auc": AUC()},
+    val_metrics={"val_loss": Loss(), "val_auc": AUC()},
+)
+
+chpkt = SaveModelCheckpoint("checkpoint")
+
+trainer = Trainer(
+    model,
+    optimizer,
+    scheduler,
+    metriclogger,
+    label_smoothing=0.05,
+    progressbar=True,
+)
+
+wandb.init(project="my-test-project", entity="nclibz", config=CFG)
+
+### TRAINING
+
+for epoch in range(CFG["n_epochs"]):
     trainer.train(train_dl)
     trainer.validate(val_dl)
-    trn_loss = metriclogger.train_loss.epoch_values[-1]
-    trn_auc = metriclogger.train_auc.epoch_values[-1]
-    val_loss = metriclogger.val_loss.epoch_values[-1]
-    val_auc = metriclogger.val_auc.epoch_values[-1]
-    print(f'EPOCH: {epoch} train_loss: {trn_loss} train_auc: {trn_auc} val_auc: {val_auc} val_loss: {val_loss}')
 
+    metrics = {k: metriclogger.get_metric(k, epoch) for k in metriclogger.all_metrics}
 
-# %% 
-metriclogger.plot_metrics(['train_loss', 'train_auc', 'val_loss', 'val_auc'])
+    wandb.log(metrics)
+
+    is_best = chpkt.check(metrics["val_loss"], model, optimizer, scheduler, epoch)
+    if is_best:
+        wandb.save(chpkt.get_checkpoint_path())
+
+    # TODO: Flytte print af metrics ind i metriclogger?
+    print(
+        f"EPOCH: {epoch} / {CFG['n_epochs']} \n train_loss: {metrics['train_loss']:.3f} val_loss: {metrics['val_loss']:.3f} \n train_auc: {metrics['train_auc']:.3f} val_auc: {metrics['val_auc']:.3f} "
+    )
+
 
 # %%
+metriclogger.plot_metrics(["train_loss", "train_auc", "val_loss", "val_auc"])

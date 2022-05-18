@@ -63,11 +63,12 @@ class MetricLogger:
 
     def __post_init__(self):
         self.all_metrics = {**self.train_metrics, **self.val_metrics}
-        self.set_attributes(self.all_metrics)
 
-    def set_attributes(self, metrics: Dict[str, Metric]):
-        for k, v in metrics.items():
-            setattr(self, k, v)
+    #    self.set_attributes(self.all_metrics)
+
+    # def set_attributes(self, metrics: Dict[str, Metric]):
+    #     for k, v in metrics.items():
+    #         setattr(self, k, v)
 
     def log_step(self, stage, preds, targets, loss):
         metrics = self.train_metrics if stage == "train" else self.val_metrics
@@ -76,6 +77,9 @@ class MetricLogger:
     def log_epoch(self, stage):
         metrics = self.train_metrics if stage == "train" else self.val_metrics
         _ = [m.log_epoch() for m in metrics.values()]
+
+    def get_metric(self, metric, epoch):
+        return self.all_metrics[metric].epoch_values[epoch].item()
 
     def get_metricsdf(self):
         series = []

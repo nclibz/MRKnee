@@ -13,14 +13,15 @@ from torchmetrics import AUROC
 class VanillaMRKnee(nn.Module):
     def __init__(
         self,
-        backbone,
-        drop_rate,
+        backbone: str,
+        pretrained: bool,
+        drop_rate: float,
     ):
         super().__init__()
         self.drop_rate = drop_rate
         self.backbone = timm.create_model(
             backbone,
-            pretrained=True,
+            pretrained=pretrained,
             num_classes=0,
             in_chans=1,
             drop_rate=self.drop_rate,

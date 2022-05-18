@@ -39,7 +39,7 @@ mrnet = pd.read_csv(
 )
 ids = mrnet["id"].to_list()
 
-paths = ["data/mrnet/train/sagittal/" + id + ".npy" for id in ids]
+paths = ["data/mrnet/imgs/sagittal/" + id + ".npy" for id in ids]
 
 mean, std = calc_img_stats(paths)
 
@@ -48,7 +48,7 @@ mean, std = calc_img_stats(paths)
 #### OAI ###
 oai = pd.read_csv("data/oai/train-meniscus.csv")
 
-fnames = oai[oai.plane == "COR"]["fname"].to_list()
+fnames = oai[oai.plane == "SAG"]["fname"].to_list()
 
 paths = ["data/oai/imgs/" + fname for fname in fnames]
 

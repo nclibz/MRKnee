@@ -1,16 +1,15 @@
-from sklearn.base import BaseEstimator, ClassifierMixin
+import os
+import random
+
 import matplotlib.pyplot as plt
-import heapq
+import numpy as np
 import pandas as pd
 
 # from ipywidgets import interact, Dropdown, IntSlider
 import torch
-import numpy as np
-from torch.utils.data.dataloader import DataLoader
-from sklearn.model_selection import cross_val_score
 from sklearn.metrics import roc_auc_score
-import albumentations as A
-import random
+from sklearn.model_selection import cross_val_score
+from torch.utils.data.dataloader import DataLoader
 
 
 def seed_everything(seed: int):
@@ -18,6 +17,11 @@ def seed_everything(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    # Set a fixed value for the hash seed
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    print(f"Everything seeded with {seed}")
 
 
 def show_batch(imgs, from_dl=False):

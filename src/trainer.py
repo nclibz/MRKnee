@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-from torch.cuda.amp import GradScaler, autocast
 from tqdm import tqdm
 
 from src.metrics import MetricLogger
@@ -24,7 +23,6 @@ class Trainer:
         self.metriclogger = metriclogger
         self.progressbar = progressbar
         self.label_smoothing = label_smoothing
-        self.scaler = GradScaler() # 16bit
 
     def train(self, dataloader):
         self.model.train()

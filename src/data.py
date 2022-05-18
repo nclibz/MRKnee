@@ -1,59 +1,60 @@
 # %%
-import os
+import pathlib
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 
-import albumentations as A
 import numpy as np
 import pandas as pd
-
-# import pytorch_lightning as pl
 import torch
-from numpy.random import default_rng
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
 
 # %%
 
-# TODO: Kunne godt refactor så der er mere composition. Eksempelvis lave en overordnet DS class som tager en DatasetLoader som input
-class DS(ABC, Dataset):
-    """ABC for datasets"""
+
+class DataReader(ABC):
+    def __init__(
+        self,
+        stage: str,
+        diagnosis: str,
+        plane: str,
+        protocol: str,
+        clean: bool,
+        train_imgsize: Tuple[int, int],
+        test_imgsize: Tuple[int, int],
+        datadir: str,
+        img_dir: str,
+    ) -> None:
+        self.stage = stage
+        self.diagnosis = diagnosis
+        self.plane = plane
+        self.protocol = protocol
+        self.clean = clean
+        self.train_imgsize = train_imgsize
+        self.test_imgsize = test_imgsize
+        self.datadir = datadir
+        self.img_dir = img_dir
+        self.img_path = pathlib.Path(self.datadir, self.img_dir)
+        self.stats = None
+
+    @abstractmethod
+    def get_cases(self) -> Tuple[List[str], List[int], List[pathlib.Path]]:
+        """Read metadata and return tuple with list of ids, lbls, and fpaths"""
+        pass
+
+
+class DS(Dataset):
+    """Generic dataset"""
 
     def __init__(
         self,
-        stage,
-        diagnosis,
-        plane,
-        clean,
+        datareader: DataReader,
         transforms,
-        datadir=None,
-        img_dir=None,
     ) -> None:
-        self.stage = stage
-        self.plane = plane
-        self.diagnosis = diagnosis
-        self.clean = clean
-        self.train_imgsize = None
-        self.test_imgsize = None
-        self.datadir = datadir if datadir else self._datadir
-        self.img_dir = (
-            os.path.join(self.datadir, img_dir)
-            if img_dir
-            else os.path.join(self.datadir, self._img_dir)
-        )
-
-        self.ids, self.lbls = self.get_cases(self.datadir, self.stage, self.diagnosis)
+        self.datareader = datareader
+        self.ids, self.lbls, self.fpaths = self.datareader.get_cases()
         self.weight = self.calculate_weights(self.lbls)
-        self.transforms = transforms.set_transforms(
-            stage,
-            plane,
-            self._stats,
-        )
-
-    @abstractmethod
-    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
-        """Read metadata and return tuple with list of ids and lbls"""
-        pass
+        self.transforms = transforms.set_transforms(self.datareader)
 
     def calculate_weights(self, lbls: List[int]) -> Tensor:
         """calculates lbl weights"""
@@ -61,25 +62,16 @@ class DS(ABC, Dataset):
         neg_count = len(lbls) - pos_count
         return torch.as_tensor(neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
 
-    def load_npy_img(self, img_dir, id):
-        """loads npy img"""
-        path = os.path.join(img_dir, id + ".npy")
-        imgs = np.load(path)
-        return imgs
-
     def __getitem__(self, idx):
         label = self.lbls[idx]
         label = torch.as_tensor(label, dtype=torch.float32).unsqueeze(0)
         id = self.ids[idx]
-        imgs = self.load_npy_img(self.img_dir, id)
+        fpath = self.fpaths[idx]
+        imgs = np.load(fpath)
 
-        # Rescale intensities to range between 0 and 255 -> tror ikke den gør noget!
-        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
-        imgs = imgs.astype(np.uint8)
         # TODO: DER ER NOGET MED TRIM IMAGES DER IKKE VIRKER MED OAI
-        imgs = self.transforms(imgs)
+        imgs = self.transforms(imgs)  # -> returns tensor
 
-        imgs = torch.from_numpy(imgs).float()
         imgs = imgs.unsqueeze(1)  # add channel
 
         return imgs, label, id, self.weight
@@ -88,15 +80,85 @@ class DS(ABC, Dataset):
         return len(self.lbls)
 
 
+class OAI(DataReader):
+    def __init__(
+        self,
+        stage: str,
+        diagnosis: str,
+        plane: str,
+        protocol: str,
+        clean: bool,
+        train_imgsize: Tuple[int, int] = (300, 300),
+        test_imgsize: Tuple[int, int] = (300, 300),
+        datadir: str = "data/oai",
+        img_dir: str = "imgs",
+    ) -> None:
+        super().__init__(
+            stage,
+            diagnosis,
+            plane,
+            protocol,
+            clean,
+            train_imgsize,
+            test_imgsize,
+            datadir,
+            img_dir,
+        )
+        self.stats = {"coronal": (66.61, 55.30), "sagittal": (13.33, 12.81)}
+
+    def get_cases(self):
+
+        path = f"{self.datadir}/{self.stage}-{self.diagnosis}.csv"
+
+        cases = pd.read_csv(path)
+
+        if self.plane == "coronal":
+            cases = cases[cases.plane == "COR"]
+        elif self.plane == "sagittal":
+            cases = cases[cases.plane == "SAG"]
+        elif self.plane == "axial":
+            cases = cases[cases.plane == "AX"]
+
+        cases = cases[cases.protocol == self.protocol]
+
+        # cases = cases.assign(img_id=cases.id.astype(str) + "_" + cases.side + "_" + cases.plane)
+
+        ids = cases["img_id"].to_list()
+        lbls = cases[self.diagnosis].to_list()
+        fnames = cases["fname"].to_list()
+        fpaths = [self.img_path / fname for fname in fnames]
+
+        return ids, lbls, fpaths
+
+
 # %%
-class MRNet(DS):
+class MRNet(DataReader):
     """MRNet dataset"""
 
-    def __init__(self, *args, **kwargs):
-
-        self._datadir = "data/mrnet"
-        self._img_dir = os.path.join("imgs", kwargs["plane"])
-        self._stats = {
+    def __init__(
+        self,
+        stage: str,
+        diagnosis: str,
+        plane: str,
+        protocol: str,
+        clean: bool,
+        train_imgsize: Tuple[int, int] = (256, 256),
+        test_imgsize: Tuple[int, int] = (256, 256),
+        datadir: str = "data/mrnet",
+        img_dir: str = "imgs",
+    ) -> None:
+        super().__init__(
+            stage,
+            diagnosis,
+            plane,
+            protocol,
+            clean,
+            train_imgsize,
+            test_imgsize,
+            datadir,
+            img_dir,
+        )
+        self.stats = {
             "coronal": (59.70, 62.69),
             "axial": (63.69, 60.57),
             "sagittal": (58.82, 48.11),
@@ -120,14 +182,12 @@ class MRNet(DS):
             },
             "valid": {"sagittal": ["1159", "1230"], "axial": ["1136"], "coronal": []},
         }
-        self.exclusions = exclude[kwargs["stage"]][kwargs["plane"]] if kwargs["clean"] else None
+        self.exclusions = exclude[self.stage][self.plane] if self.clean else None
 
-        super().__init__(*args, **kwargs)
-
-    def get_cases(self, datadir: str, stage: str, diagnosis: str):
+    def get_cases(self):
         """load metadata and return tupple with list of ids and list of lbls"""
 
-        path = f"{datadir}/{stage}-{diagnosis}.csv"
+        path = f"{self.datadir}/{self.stage}-{self.diagnosis}.csv"
 
         cases = pd.read_csv(
             path, header=None, names=["id", "lbl"], dtype={"id": str, "lbl": np.int64}
@@ -139,75 +199,61 @@ class MRNet(DS):
 
         ids = cases["id"].tolist()
         lbls = cases["lbl"].tolist()
+        fpaths = [self.img_path / self.plane / (id + ".npy") for id in ids]
 
-        return ids, lbls
-
-
-class OAI(DS):
-    """OAI DATASET"""
-
-    def __init__(self, *args, **kwargs):
-        assert kwargs["plane"] in ["coronal", "sagittal"]
-        self._datadir = "data/oai"
-        self._img_dir = "imgs"
-        self._stats = {"coronal": (66.61, 55.30), "sagittal": (13.33, 12.81)}
-        super().__init__(*args, **kwargs)
-
-    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
-
-        path = f"{datadir}/{stage}-{diagnosis}.csv"
-
-        cases = pd.read_csv(path)
-
-        if self.plane == "coronal":
-            cases = cases[cases.plane == "COR"]
-        elif self.plane == "sagittal":
-            cases = cases[cases.plane == "SAG"]
-
-        cases = cases.assign(img_id=cases.id.astype(str) + "_" + cases.side + "_" + cases.plane)
-        ids = cases["img_id"].to_list()
-        lbls = cases[self.diagnosis].to_list()
-
-        return ids, lbls
+        return ids, lbls, fpaths
 
 
-class KneeMRI(DS):
-    """Stajdur kneemri dataset"""
+def get_dataloader(datareader, augs, n_workers: int = 2):
+    ds = DS(datareader, augs)
 
-    def __init__(self, *args, **kwargs):
-        self._datadir = "data/kneemri"
-        self._img_dir = "imgs"
-        super().__init__(*args, **kwargs)
-
-        assert self.plane == "sagittal"
-
-    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
-        path = os.path.join(datadir, "metadata.csv")
-        cases = pd.read_csv(path)
-        cases["ids"] = cases["volumeFilename"].str.replace(".pck", "", regex=False)
-        cases["aclDiagnosis"] = cases["aclDiagnosis"].replace(2, 1)
-
-        ids = cases["ids"].tolist()
-        lbls = cases["aclDiagnosis"].tolist()
-
-        return ids, lbls
+    dl = DataLoader(
+        ds,
+        batch_size=1,
+        shuffle=True if datareader.stage == "train" else False,
+        num_workers=n_workers,
+        pin_memory=True,
+    )
+    return dl
 
 
-class SkmTea(DS):
-    """Stanford skm-tea dataset"""
+# class KneeMRI(DS):
+#     """Stajdur kneemri dataset"""
 
-    def __init__(self, *args, **kwargs):
-        self._datadir = "data/skm-tea"
-        self._img_dir = "imgs"
-        super().__init__(*args, **kwargs)
+#     def __init__(self, *args, **kwargs):
+#         self._datadir = "data/kneemri"
+#         self._img_dir = "imgs"
+#         super().__init__(*args, **kwargs)
 
-    def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
-        path = os.path.join(datadir, "metadata.csv")
-        cases = pd.read_csv(path)
-        ids = cases["scan_id"].tolist()
-        lbls = cases[self.diagnosis].tolist()
+#         assert self.plane == "sagittal"
 
-        return ids, lbls
+#     def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
+#         path = os.path.join(datadir, "metadata.csv")
+#         cases = pd.read_csv(path)
+#         cases["ids"] = cases["volumeFilename"].str.replace(".pck", "", regex=False)
+#         cases["aclDiagnosis"] = cases["aclDiagnosis"].replace(2, 1)
+
+#         ids = cases["ids"].tolist()
+#         lbls = cases["aclDiagnosis"].tolist()
+
+#         return ids, lbls
+
+
+# class SkmTea(DS):
+#     """Stanford skm-tea dataset"""
+
+#     def __init__(self, *args, **kwargs):
+#         self._datadir = "data/skm-tea"
+#         self._img_dir = "imgs"
+#         super().__init__(*args, **kwargs)
+
+#     def get_cases(self, datadir: str, stage: str, diagnosis: str) -> Tuple[List[str], List[int]]:
+#         path = os.path.join(datadir, "metadata.csv")
+#         cases = pd.read_csv(path)
+#         ids = cases["scan_id"].tolist()
+#         lbls = cases[self.diagnosis].tolist()
+
+#         return ids, lbls
 
 
 # %%
