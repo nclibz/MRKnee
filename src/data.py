@@ -137,8 +137,6 @@ class OAI(DataReader):
 
         cases = cases[cases.protocol == self.protocol]
 
-        # cases = cases.assign(img_id=cases.id.astype(str) + "_" + cases.side + "_" + cases.plane)
-
         ids = cases["img_id"].to_list()
         lbls = cases[self.diagnosis].to_list()
         fnames = cases["fname"].to_list()
