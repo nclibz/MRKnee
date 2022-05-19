@@ -81,6 +81,10 @@ class MetricLogger:
     def get_metric(self, metric, epoch):
         return self.all_metrics[metric].epoch_values[epoch].item()
 
+    def get_min(self, metric: str):
+        out = min(self.all_metrics[metric].epoch_values)
+        return out.item()
+
     def get_metricsdf(self):
         series = []
         for k, v in self.all_metrics.items():
