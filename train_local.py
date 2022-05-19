@@ -25,7 +25,7 @@ CFG = {
     "plane": "coronal",
     "backbone": "tf_mobilenetv3_small_minimal_100",
     "protocol": "TSE",
-    "dataset": "oai",
+    "dataset": "mrnet",
     "n_epochs": 15,
 }
 # %%%
@@ -118,4 +118,14 @@ for epoch in range(CFG["n_epochs"]):
 
 
 # %%
+
+metriclogger.get_min("val_loss")
+# %%
 metriclogger.plot_metrics(["train_loss", "train_auc", "val_loss", "val_auc"])
+
+# %%
+metrics["val_loss"]
+# %%
+metriclogger.get_min("val_loss")
+
+# %%
