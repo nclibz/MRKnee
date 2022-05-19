@@ -45,9 +45,10 @@ class Augmentations:
         stage = datareader.stage
         train_imgsize = datareader.train_imgsize
         test_imgsize = datareader.test_imgsize
-        self.mean, self.sd = datareader.stats[plane]
+        self.mean, self.sd = datareader.get_stats()
         transforms = []
 
+        ## TRAIN TRANSFORMS
         if stage == "train":
             transforms.append(
                 A.ShiftScaleRotate(
@@ -76,9 +77,17 @@ class Augmentations:
                 transforms.append(A.HorizontalFlip(p=0.5))
 
             transforms.append(A.CenterCrop(*train_imgsize))
-
+        ## VALID TRANSFORMS
         elif stage == "valid":
             transforms.append(A.CenterCrop(*test_imgsize))
+
+        ### COMMON TRANSFORMS
+
+        transforms.append(
+            A.Normalize(
+                mean=self.mean, std=self.sd, always_apply=True, max_pixel_value=255
+            )
+        )
 
         self.transforms = A.Compose(transforms)
 
@@ -120,13 +129,15 @@ class Augmentations:
 
         imgs = self.apply_transforms(imgs)
 
-        imgs = self.standardize(imgs)
+        # imgs = self.standardize(imgs) -> is done using albu now
 
         # Convert to tensor so randomeerase works
         imgs = torch.from_numpy(imgs).float()
 
         # randomerasing needs to be implemented after standardization
-        re = RandomErasing(probability=self.re_p, max_area=0.15, mode="const", device="cpu")
+        re = RandomErasing(
+            probability=self.re_p, max_area=0.15, mode="const", device="cpu"
+        )
 
         imgs = re(imgs)
 

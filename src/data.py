@@ -42,6 +42,10 @@ class DataReader(ABC):
         """Read metadata and return tuple with list of ids, lbls, and fpaths"""
         pass
 
+    @abstractmethod
+    def get_stats(self) -> Tuple[int, int]:
+        """Returns tupple with (mean, SD)"""
+
 
 class DS(Dataset):
     """Generic dataset"""
@@ -54,7 +58,9 @@ class DS(Dataset):
         self.datareader = datareader
         self.ids, self.lbls, self.fpaths = self.datareader.get_cases()
         self.weight = self.calculate_weights(self.lbls)
-        self.transforms = transforms.set_transforms(self.datareader)
+        self.transforms = (
+            None if transforms is None else transforms.set_transforms(self.datareader)
+        )
 
     def calculate_weights(self, lbls: List[int]) -> Tensor:
         """calculates lbl weights"""
@@ -70,7 +76,10 @@ class DS(Dataset):
         imgs = np.load(fpath)
 
         # TODO: DER ER NOGET MED TRIM IMAGES DER IKKE VIRKER MED OAI
-        imgs = self.transforms(imgs)  # -> returns tensor
+        if self.transforms is None:
+            imgs = torch.Tensor(imgs).float()
+        else:
+            imgs = self.transforms(imgs)  # -> returns tensor
 
         imgs = imgs.unsqueeze(1)  # add channel
 
@@ -104,7 +113,14 @@ class OAI(DataReader):
             datadir,
             img_dir,
         )
-        self.stats = {"coronal": (66.61, 55.30), "sagittal": (13.33, 12.81)}
+        self.stats = {
+            "TSE": {"coronal": (66.51, 45.51), "sagittal": (14.69, 13.47)},
+            "MPR": {"axial": (18.06, 18.91), "coronal": (23.26, 20.10)},
+            "DESS": {"sagittal": (9.69, 8.03)},
+        }
+
+    def get_stats(self):
+        return self.stats[self.protocol][self.plane]
 
     def get_cases(self):
 
@@ -183,6 +199,9 @@ class MRNet(DataReader):
             "valid": {"sagittal": ["1159", "1230"], "axial": ["1136"], "coronal": []},
         }
         self.exclusions = exclude[self.stage][self.plane] if self.clean else None
+
+    def get_stats(self):
+        return self.stats[self.plane]
 
     def get_cases(self):
         """load metadata and return tupple with list of ids and list of lbls"""

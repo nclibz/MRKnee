@@ -39,7 +39,7 @@ mrnet = pd.read_csv(
 )
 ids = mrnet["id"].to_list()
 
-paths = ["data/mrnet/imgs/sagittal/" + id + ".npy" for id in ids]
+paths = ["data/mrnet/imgs/axial/" + id + ".npy" for id in ids]
 
 mean, std = calc_img_stats(paths)
 

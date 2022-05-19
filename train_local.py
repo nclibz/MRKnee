@@ -1,10 +1,10 @@
 # %%
 import torch
-import wandb
 from dotenv import dotenv_values
 from madgrad import MADGRAD
 from tqdm import tqdm
 
+import wandb
 from src.augmentations import Augmentations
 from src.data import OAI, MRNet, get_dataloader
 from src.metrics import AUC, Loss, MetricLogger
