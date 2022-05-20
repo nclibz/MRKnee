@@ -97,8 +97,8 @@ class OAI(DataReader):
         plane: str,
         protocol: str,
         clean: bool,
-        train_imgsize: Tuple[int, int] = (300, 300),
-        test_imgsize: Tuple[int, int] = (300, 300),
+        train_imgsize: Tuple[int, int] = (256, 256),
+        test_imgsize: Tuple[int, int] = (256, 256),
         datadir: str = "data/oai",
         img_dir: str = "imgs",
     ) -> None:
