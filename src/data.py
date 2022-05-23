@@ -54,10 +54,12 @@ class DS(Dataset):
         self,
         datareader: DataReader,
         transforms,
+        use_3d: bool = False,
     ) -> None:
         self.datareader = datareader
         self.ids, self.lbls, self.fpaths = self.datareader.get_cases()
         self.weight = self.calculate_weights(self.lbls)
+        self.use_3d = use_3d
         self.transforms = (
             None if transforms is None else transforms.set_transforms(self.datareader)
         )
@@ -67,6 +69,12 @@ class DS(Dataset):
         pos_count = np.sum(lbls)
         neg_count = len(lbls) - pos_count
         return torch.as_tensor(neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
+
+    def pad_depth(self, imgs, min_depth=32):
+        d, h, w = imgs.shape
+        d_pad = min_depth - d
+        padding = torch.zeros(d_pad, h, w)
+        return torch.concat([imgs, padding])
 
     def __getitem__(self, idx):
         label = self.lbls[idx]
@@ -81,7 +89,15 @@ class DS(Dataset):
         else:
             imgs = self.transforms(imgs)  # -> returns tensor
 
-        imgs = imgs.unsqueeze(1)  # add channel
+        # ADD PADDING IF USING 3D MODEL
+        if self.use_3d and imgs.size(0) < 32:
+            imgs = self.pad_depth(imgs)
+
+        # add channel
+        if self.use_3d:
+            imgs = imgs.unsqueeze(0)
+        else:
+            imgs = imgs.unsqueeze(1)
 
         return imgs, label, id, self.weight
 
@@ -221,8 +237,8 @@ class MRNet(DataReader):
         return ids, lbls, fpaths
 
 
-def get_dataloader(datareader, augs, n_workers: int = 2):
-    ds = DS(datareader, augs)
+def get_dataloader(datareader, augs, n_workers: int = 2, use_3d=False):
+    ds = DS(datareader, augs, use_3d=use_3d)
 
     dl = DataLoader(
         ds,

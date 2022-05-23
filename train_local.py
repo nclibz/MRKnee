@@ -22,24 +22,24 @@ wandb.login(key=ENV["WANDB_API_KEY"])
 ##### CONFIG
 
 CFG = {
-    "plane": "coronal",
+    "plane": "sagittal",
     "backbone": "tf_mobilenetv3_small_minimal_100",
-    "protocol": "TSE",
-    "dataset": "mrnet",
+    "protocol": "DESS",
+    "dataset": "oai",
     "n_epochs": 15,
 }
 # %%%
 
 augs = Augmentations(
     ssr_p=0.50,
-    shift_limit=0.15,
-    scale_limit=0.15,
-    rotate_limit=0.15,
+    shift_limit=0.05,
+    scale_limit=0.05,
+    rotate_limit=0.05,
     bc_p=0.00,
     brigthness_limit=0.10,
     contrast_limit=0.10,
-    re_p=0.50,
-    clahe_p=0.70,
+    re_p=0.0,
+    clahe_p=0.50,
     trim_p=0.0,
 )
 
