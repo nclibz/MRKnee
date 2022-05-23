@@ -7,6 +7,7 @@ from tqdm import tqdm
 import wandb
 from src.augmentations import Augmentations
 from src.data import OAI, MRNet, get_dataloader
+from src.effnet3d import EfficientNetBN
 from src.metrics import AUC, Loss, MetricLogger
 from src.model import VanillaMRKnee
 from src.model_checkpoint import SaveModelCheckpoint
