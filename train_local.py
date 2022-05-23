@@ -17,6 +17,12 @@ from src.utils import seed_everything
 ENV = dotenv_values()
 seed_everything(123)
 
+
+# %%
+
+from src.effnet3d import EfficientNetBN
+
+# %%
 wandb.login(key=ENV["WANDB_API_KEY"])
 
 #%%
@@ -113,9 +119,7 @@ for epoch in range(CFG["n_epochs"]):
         wandb.save(chpkt.get_checkpoint_path())
 
     # TODO: Flytte print af metrics ind i metriclogger?
-    print(
-        f"EPOCH: {epoch} / {CFG['n_epochs']} \n train_loss: {metrics['train_loss']:.3f} val_loss: {metrics['val_loss']:.3f} \n train_auc: {metrics['train_auc']:.3f} val_auc: {metrics['val_auc']:.3f} "
-    )
+    trainer.print_metrics(epoch)
 
 
 # %%

@@ -1,7 +1,8 @@
 # %%
 import pathlib
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from ctypes import Union
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -40,7 +41,6 @@ class DataReader(ABC):
     @abstractmethod
     def get_cases(self) -> Tuple[List[str], List[int], List[pathlib.Path]]:
         """Read metadata and return tuple with list of ids, lbls, and fpaths"""
-        pass
 
     @abstractmethod
     def get_stats(self) -> Tuple[int, int]:
@@ -55,11 +55,13 @@ class DS(Dataset):
         datareader: DataReader,
         transforms,
         use_3d: bool = False,
+        dev_run_samples: Optional[int] = None,
     ) -> None:
         self.datareader = datareader
         self.ids, self.lbls, self.fpaths = self.datareader.get_cases()
         self.weight = self.calculate_weights(self.lbls)
         self.use_3d = use_3d
+        self.dev_run_samples = dev_run_samples
         self.transforms = (
             None if transforms is None else transforms.set_transforms(self.datareader)
         )
@@ -102,7 +104,11 @@ class DS(Dataset):
         return imgs, label, id, self.weight
 
     def __len__(self):
-        return len(self.lbls)
+
+        if self.dev_run_samples is None:
+            return len(self.lbls)
+
+        return self.dev_run_samples
 
 
 class OAI(DataReader):
@@ -237,7 +243,12 @@ class MRNet(DataReader):
         return ids, lbls, fpaths
 
 
-def get_dataloader(datareader, augs, n_workers: int = 2, use_3d=False):
+def get_dataloader(
+    datareader,
+    augs,
+    use_3d,
+    n_workers: int = 2,
+):
     ds = DS(datareader, augs, use_3d=use_3d)
 
     dl = DataLoader(

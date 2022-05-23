@@ -1,7 +1,9 @@
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
+from src.data import DS
 from src.metrics import MetricLogger
 
 
@@ -67,9 +69,21 @@ class Trainer:
             self.metriclogger.log_epoch("val")
 
     def fit(self, epochs, train_dataloader, val_dataloader):
-        for _ in tqdm(range(epochs), desc="Epochs", disable=not self.progressbar):
+        for epoch in tqdm(range(epochs), desc="Epochs", disable=not self.progressbar):
             self.train(train_dataloader)
             self.validate(val_dataloader)
+            self.print_metrics(epoch)
+
+    def print_metrics(self, epoch):
+
+        metrics = {
+            k: self.metriclogger.get_metric(k, epoch)
+            for k in self.metriclogger.all_metrics
+        }
+
+        print(
+            f"EPOCH: {epoch} \n train_loss: {metrics['train_loss']:.3f} val_loss: {metrics['val_loss']:.3f} \n train_auc: {metrics['train_auc']:.3f} val_auc: {metrics['val_auc']:.3f} "
+        )
 
     def smooth_labels(self, target):
         return target * (1 - 2 * self.label_smoothing) + self.label_smoothing
