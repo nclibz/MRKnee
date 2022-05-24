@@ -124,8 +124,8 @@ class Augmentations:
             imgs = self.trim_imgs(imgs, self.trim_p)
 
         # Rescale intensities to range between 0 and 255 -> tror ikke den gør noget!
-        # imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
-        # imgs = imgs.astype(np.uint8)
+        imgs = (imgs - imgs.min()) / (imgs.max() - imgs.min()) * 255
+        imgs = imgs.astype(np.uint8)
 
         imgs = self.apply_transforms(imgs)
 
