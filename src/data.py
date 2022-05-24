@@ -55,12 +55,14 @@ class DS(Dataset):
         datareader: DataReader,
         transforms,
         use_3d: bool = False,
+        img_depth_3d: int = 32,
         dev_run_samples: Optional[int] = None,
     ) -> None:
         self.datareader = datareader
         self.ids, self.lbls, self.fpaths = self.datareader.get_cases()
         self.weight = self.calculate_weights(self.lbls)
         self.use_3d = use_3d
+        self.img_depth_3d = img_depth_3d
         self.dev_run_samples = dev_run_samples
         self.transforms = (
             None if transforms is None else transforms.set_transforms(self.datareader)
@@ -72,11 +74,18 @@ class DS(Dataset):
         neg_count = len(lbls) - pos_count
         return torch.as_tensor(neg_count / pos_count, dtype=torch.float32).unsqueeze(0)
 
-    def pad_depth(self, imgs, min_depth=32):
+    def pad_depth(self, imgs, min_depth):
         d, h, w = imgs.shape
         d_pad = min_depth - d
         padding = torch.zeros(d_pad, h, w)
         return torch.concat([imgs, padding])
+
+    def get_middle_slices(self, imgs, n_slices):
+        n_imgs = imgs.shape[0]
+        middle = n_imgs // 2
+        left = int(middle - (n_slices / 2))
+        right = int(middle + (n_slices / 2))
+        return imgs[left:right, :, :]
 
     def __getitem__(self, idx):
         label = self.lbls[idx]
@@ -92,8 +101,10 @@ class DS(Dataset):
             imgs = self.transforms(imgs)  # -> returns tensor
 
         # ADD PADDING IF USING 3D MODEL
-        if self.use_3d and imgs.size(0) < 32:
-            imgs = self.pad_depth(imgs)
+        if self.use_3d and imgs.size(0) < self.img_depth_3d:
+            imgs = self.pad_depth(imgs, self.img_depth_3d)
+        elif self.use_3d and imgs.size(0) > self.img_depth_3d:
+            imgs = self.get_middle_slices(imgs, n_slices=self.img_depth_3d)True
 
         # add channel
         if self.use_3d:
