@@ -31,12 +31,12 @@ class AUC(Metric):
     step_targets: List[torch.Tensor] = field(default_factory=list)
 
     def log_step(self, preds, targets, loss):
-        self.step_preds.append(preds)
-        self.step_targets.append(targets)
+        self.step_preds.append(preds.flatten())
+        self.step_targets.append(targets.flatten())
 
     def log_epoch(self):
-        preds = torch.Tensor(self.step_preds)
-        targets = torch.Tensor(self.step_targets).long()
+        preds = torch.cat(self.step_preds)
+        targets = torch.cat(self.step_targets).long()
         auc = auroc(preds, targets)
         self.epoch_values.append(auc)
         self.step_preds = []

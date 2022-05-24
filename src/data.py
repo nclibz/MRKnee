@@ -94,13 +94,12 @@ class DS(Dataset):
         fpath = self.fpaths[idx]
         imgs = np.load(fpath)
 
-        # TODO: DER ER NOGET MED TRIM IMAGES DER IKKE VIRKER MED OAI
         if self.transforms is None:
             imgs = torch.Tensor(imgs).float()
         else:
             imgs = self.transforms(imgs)  # -> returns tensor
 
-        # ADD PADDING IF USING 3D MODEL
+        # STANDARDIZE DEPTH SIZE IF USING 3D MODEL
         if self.use_3d and imgs.size(0) < self.img_depth_3d:
             imgs = self.pad_depth(imgs, self.img_depth_3d)
         elif self.use_3d and imgs.size(0) > self.img_depth_3d:
