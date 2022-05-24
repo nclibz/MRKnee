@@ -104,7 +104,7 @@ class DS(Dataset):
         if self.use_3d and imgs.size(0) < self.img_depth_3d:
             imgs = self.pad_depth(imgs, self.img_depth_3d)
         elif self.use_3d and imgs.size(0) > self.img_depth_3d:
-            imgs = self.get_middle_slices(imgs, n_slices=self.img_depth_3d)True
+            imgs = self.get_middle_slices(imgs, n_slices=self.img_depth_3d)
 
         # add channel
         if self.use_3d:
